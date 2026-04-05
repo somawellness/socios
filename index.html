@@ -832,6 +832,7 @@ function showLoginScreen(){
   document.getElementById('portal-screen').style.display='none';
   document.getElementById('registro-screen').style.display='none';
 }
+function showPortal(){ showPortalScreen(); }
 function showPortalScreen(){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('registro-screen').style.display='none';
@@ -840,10 +841,53 @@ function showPortalScreen(){
 }
 
 // ── Auth ───────────────────────────────────────────────────────
-async function portalLoginEmail(){const email=document.getElementById('portal-email').value.trim();const pass=document.getElementById('portal-pass').value;const errEl=document.getElementById('portal-err');if(!email||!pass){errEl.textContent='Completa email y contrasena.';errEl.style.display='block';return;}try{await auth.signInWithEmailAndPassword(email,pass);}catch(e){errEl.textContent=e.code==='auth/user-not-found'||e.code==='auth/wrong-password'?'Email o contrasena incorrectos.':'Error: '+e.message;errEl.style.display='block';}}
-async function portalLoginGoogle(){try{const provider=new firebase.auth.GoogleAuthProvider();await auth.signInWithPopup(provider);}catch(e){console.log('Google error:',e);}}
+async function portalLoginEmail(){
+  const emailEl = document.getElementById('portal-email');
+  const passEl  = document.getElementById('portal-pass');
+  const errEl   = document.getElementById('portal-err');
+  const btn     = document.querySelector('#login-screen button.lb');
 
-function portalLogout(){
+  const email = emailEl ? emailEl.value.trim() : '';
+  const pass  = passEl  ? passEl.value : '';
+
+  if(!email || !pass){
+    if(errEl){ errEl.textContent='Completá email y contraseña.'; errEl.style.display='block'; }
+    return;
+  }
+  if(!auth){
+    if(errEl){ errEl.textContent='Conectando con Firebase... intentá de nuevo en un momento.'; errEl.style.display='block'; }
+    return;
+  }
+
+  if(btn){ btn.textContent='Ingresando...'; btn.disabled=true; }
+  if(errEl) errEl.style.display='none';
+
+  try{
+    await auth.signInWithEmailAndPassword(email, pass);
+    // onAuthStateChanged handles the redirect
+  } catch(e){
+    const msg = e.code==='auth/user-not-found'||e.code==='auth/wrong-password'||e.code==='auth/invalid-credential'
+      ? 'Email o contraseña incorrectos.'
+      : e.code==='auth/invalid-email' ? 'Email inválido.'
+      : e.code==='auth/configuration-not-found' ? 'Firebase Auth no está habilitado. Activalo en Firebase Console.'
+      : 'Error: '+e.message;
+    if(errEl){ errEl.textContent=msg; errEl.style.display='block'; }
+  } finally {
+    if(btn){ btn.textContent='Ingresar'; btn.disabled=false; }
+  }
+}
+async function portalLoginGoogle(){
+  if(!auth){ showToast('Firebase no listo, intentá de nuevo','⚠'); return; }
+  try{
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
+  } catch(e){
+    const errEl = document.getElementById('portal-err');
+    if(errEl){ errEl.textContent='Error Google: '+e.message; errEl.style.display='block'; }
+  }
+}
+
+async function portalLogout(){
   if(auth)auth.signOut();
   portalUser=null; portalStudent=null;
   showLoginScreen();
@@ -882,11 +926,11 @@ function portal_renderSlotsDisponibles(){
 }
 function portal_selSlot(el){document.querySelectorAll('#portal-slots-list div[data-key]').forEach(d=>{d.style.border='none';d.style.background='var(--cream)';delete d.dataset.selected;});el.style.border='1.5px solid var(--sage-d)';el.style.background='rgba(77,122,77,.08)';el.dataset.selected='1';document.getElementById('portal-confirmar-cambio').disabled=false;}
 async function portal_confirmarCambio(){const sel=document.querySelector('#portal-slots-list div[data-selected="1"]');if(!sel||!portalCambioHorario)return;const parts=sel.dataset.key.split('|');const dia=parts[1],hora=parts[2];const hh=hora.replace(':00','');const nuevoSlot=dia+' '+hh+'hs';const s=portalStudent;const hors=(s.horarios||'').split(' / ');const idx=hors.findIndex(x=>x.includes(portalCambioHorario));const nh=idx>=0?hors.map((x,i)=>i===idx?nuevoSlot:x):[...hors,nuevoSlot];const newH=nh.filter(Boolean).join(' / ');try{if(!db)throw new Error('Sin conexion');await db.collection('students').doc(s.id).update({horarios:newH});portalStudent={...s,horarios:newH};document.getElementById('portal-cambio-ov').classList.remove('open');renderPortal();portal_toast('Turno actualizado');}catch(e){portal_toast('Error: '+e.message,'!');}}
-function portal_solicitarRenovacion(){portal_crearSolicitud('renovacion','El cliente '+portalStudent.nombre+' '+portalStudent.apellido+' solicita renovar su plan ('+portalStudent.plan+').',portalStudent.plan);}
+async function portal_solicitarRenovacion(){portal_crearSolicitud('renovacion','El cliente '+portalStudent.nombre+' '+portalStudent.apellido+' solicita renovar su plan ('+portalStudent.plan+').',portalStudent.plan);}
 function portal_abrirCambioPlan(){document.getElementById('portal-cambio-plan-ov').classList.add('open');const sel=document.getElementById('portal-nuevo-plan');if(sel)sel.innerHTML=Object.keys(PLANES).map(k=>'<option value="'+k+'"'+(k===portalStudent.plan?' selected':'')+'>'+k+'</option>').join('');}
 async function portal_confirmarCambioPlan(){const sel=document.getElementById('portal-nuevo-plan');const nuevoPlan=sel?sel.value:'';if(!nuevoPlan)return;await portal_crearSolicitud('cambio_plan','El cliente '+portalStudent.nombre+' '+portalStudent.apellido+' solicita cambiar: '+portalStudent.plan+' a '+nuevoPlan+'.',nuevoPlan);document.getElementById('portal-cambio-plan-ov').classList.remove('open');portal_toast('Solicitud enviada');}
 async function portal_crearSolicitud(tipo,mensaje,data){const s=portalStudent;try{if(!db)throw new Error('Sin conexion');await db.collection('solicitudes').add({tipo,mensaje,data,clienteId:s.id,clienteNombre:s.nombre+' '+s.apellido,sede:s.sede,estado:'pendiente',createdAt:new Date().toISOString()});portal_toast('Solicitud enviada');}catch(e){portal_toast('Error: '+e.message,'!');}}
-function portal_toast(msg,ico){const t=document.getElementById('portal-toast');if(!t)return;t.textContent=(ico||'ok')+' '+msg;t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+function portal_toast(msg,ico){showToast(msg,ico);}
 
 // ── Registro ───────────────────────────────────────────────────
 function showRegistro(){
@@ -1003,7 +1047,17 @@ async function registro_crearCuenta(){
     err.textContent='Error: '+e.message;err.style.display='block';
   }
 }
-async function registro_completar(metodo,txId,pendingTransfer){if(pendingTransfer===undefined)pendingTransfer=false;const p=PLANES[registroData.plan];const err=document.getElementById('reg-err3h');try{let uc;try{uc=await auth.createUserWithEmailAndPassword(registroData.email,registroData.pass);}catch(e){if(e.code==='auth/email-already-in-use'){uc=await auth.signInWithEmailAndPassword(registroData.email,registroData.pass);}else if(e.code==='auth/configuration-not-found'){throw new Error('Firebase Auth no está habilitado. Activalo en Firebase Console → Authentication → Sign-in method.');}else throw e;}const ep=pendingTransfer?'Pendiente':'Al dia';const ns={nombre:registroData.nombre,apellido:registroData.apellido,dni:registroData.dni||'',telefono:registroData.telefono||'',email:registroData.email,sede:registroData.sede,plan:registroData.plan,monto:p?p.monto:registroData.monto,creditos:p?p.creditos:0,metodo,ep,inicio:new Date().toISOString().split('T')[0],horarios:registroData.horarios||'',lesiones:'',descuento:'',actividad:'',att:[0,0,0,0,0,0],txId:txId||'',comprobante:registroData.comprobante||''};const docRef=await db.collection('students').add(ns);if(pendingTransfer){await db.collection('solicitudes').add({tipo:'confirmar_pago',mensaje:registroData.nombre+' '+registroData.apellido+' pago por transferencia. Pendiente confirmacion.',data:registroData.plan,clienteId:docRef.id,clienteNombre:registroData.nombre+' '+registroData.apellido,sede:registroData.sede,estado:'pendiente',createdAt:new Date().toISOString()});}document.getElementById('registro-screen').style.display='none';document.getElementById('registro-ok-screen').style.display='flex';document.getElementById('reg-ok-msg').textContent=pendingTransfer?'Comprobante recibido. Te confirmamos el acceso en las proximas horas.':'Pago aprobado. Ya podes acceder a tu portal.';if(!pendingTransfer){setTimeout(async()=>{portalStudent={...ns,id:docRef.id};document.getElementById('registro-ok-screen').style.display='none';showPortal();},2000);}}catch(e){const btn=document.getElementById('reg-btn-pagar');if(btn){btn.disabled=false;btn.textContent='Reintentar';}err.textContent='Error: '+e.message;err.style.display='block';}}
+async function registro_completar(metodo,txId,pendingTransfer){if(pendingTransfer===undefined)pendingTransfer=false;const p=PLANES[registroData.plan];const err=document.getElementById('reg-err3h');try{let uc;try{uc=await auth.createUserWithEmailAndPassword(registroData.email,registroData.pass);}catch(e){if(e.code==='auth/email-already-in-use'){uc=await auth.signInWithEmailAndPassword(registroData.email,registroData.pass);}else if(e.code==='auth/configuration-not-found'){throw new Error('Firebase Auth no está habilitado. Activalo en Firebase Console → Authentication → Sign-in method.');}else throw e;}const ep=pendingTransfer?'Pendiente':'Al dia';const ns={nombre:registroData.nombre,apellido:registroData.apellido,dni:registroData.dni||'',telefono:registroData.telefono||'',email:registroData.email,sede:registroData.sede,plan:registroData.plan,monto:p?p.monto:registroData.monto,creditos:p?p.creditos:0,metodo,ep,inicio:new Date().toISOString().split('T')[0],horarios:registroData.horarios||'',lesiones:'',descuento:'',actividad:'',att:[0,0,0,0,0,0],txId:txId||'',comprobante:registroData.comprobante||''};const docRef=await db.collection('students').add(ns);// Always create solicitud so admin sees new registrations
+await db.collection('solicitudes').add({
+  tipo: 'confirmar_pago',
+  mensaje: registroData.nombre+' '+registroData.apellido+' se registró'+(pendingTransfer?' y pagó por transferencia. Pendiente confirmación.':'. Sin comprobante de pago aún.'),
+  data: registroData.plan,
+  clienteId: docRef.id,
+  clienteNombre: registroData.nombre+' '+registroData.apellido,
+  sede: registroData.sede,
+  estado: 'pendiente',
+  createdAt: new Date().toISOString()
+});document.getElementById('registro-screen').style.display='none';document.getElementById('registro-ok-screen').style.display='flex';document.getElementById('reg-ok-msg').textContent=pendingTransfer?'Comprobante recibido. Te confirmamos el acceso en las proximas horas.':'Pago aprobado. Ya podes acceder a tu portal.';if(!pendingTransfer){setTimeout(async()=>{portalStudent={...ns,id:docRef.id};document.getElementById('registro-ok-screen').style.display='none';showPortal();},2000);}}catch(e){const btn=document.getElementById('reg-btn-pagar');if(btn){btn.disabled=false;btn.textContent='Reintentar';}err.textContent='Error: '+e.message;err.style.display='block';}}
 function registro_irAlPortal(){
   document.getElementById('registro-ok-screen').style.display='none';
   if(portalStudent){showPortal();}else{showPortalLogin();}
@@ -1188,6 +1242,9 @@ function registro_step3_next(){
 }
 
 window.addEventListener('load', initPortal);
+
+
+
 
 
 </script>
