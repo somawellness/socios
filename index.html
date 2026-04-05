@@ -442,9 +442,9 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
       <div style="font-size:18px;font-weight:500;">Crear cuenta</div>
       <button onclick="hideRegistro()" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;">&#x2715;</button>
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:16px;" id="registro-step">Paso 1 de 3</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px;" id="registro-step">Paso 1 de 4</div>
     <div style="height:4px;background:var(--border);border-radius:4px;margin-bottom:24px;">
-      <div id="registro-progress" style="height:100%;width:33%;background:var(--sage-d);border-radius:4px;transition:width .3s;"></div>
+      <div id="registro-progress" style="height:100%;width:25%;background:var(--sage-d);border-radius:4px;transition:width .3s;"></div>
     </div>
     <!-- Step 1 -->
     <div id="registro-step1">
@@ -500,7 +500,20 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
       </div>
     </div>
     <!-- Step 3 -->
+    <!-- Step 3: Horarios -->
     <div id="registro-step3" style="display:none;">
+      <div style="font-size:12px;font-weight:600;color:var(--sage-d);letter-spacing:1px;margin-bottom:6px;">TUS TURNOS FIJOS</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Elegí los días y horarios a los que vas a asistir cada semana.</div>
+      <div id="reg-horarios-cont"></div>
+      <div id="reg-err3h" style="display:none;font-size:12px;color:var(--err);margin-top:8px;"></div>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button onclick="registro_renderStep(2)" class="btn btn-o" style="flex:1;">← Volver</button>
+        <button onclick="registro_step3_next()" class="lb" style="flex:2;">Continuar →</button>
+      </div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:8px;">Podés cambiar tus turnos después desde tu portal.</div>
+    </div>
+
+    <div id="registro-step4" style="display:none;">
       <div style="font-size:12px;font-weight:600;color:var(--sage-d);letter-spacing:1px;margin-bottom:14px;">PAGO POR TRANSFERENCIA</div>
       <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:14px;border:1px solid var(--border);font-size:13px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--muted);">Sede</span><strong id="reg-pago-sede"></strong></div>
@@ -522,7 +535,7 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
       <input type="file" id="reg-comprobante" accept="image/*,.pdf" style="width:100%;padding:10px;background:var(--bg);border:1.5px dashed var(--border);border-radius:8px;font-family:inherit;font-size:12px;margin-bottom:12px;box-sizing:border-box;">
       <button id="reg-btn-transfer" onclick="registro_pagarTransfer()" class="lb">Enviar comprobante →</button>
       <div id="reg-err3" style="display:none;font-size:12px;color:var(--err);margin-top:8px;"></div>
-      <button onclick="registro_renderStep(2)" class="btn btn-o" style="width:100%;margin-top:10px;">← Volver</button>
+      <button onclick="registro_renderStep(3)" class="btn btn-o" style="width:100%;margin-top:10px;">← Volver</button>
     </div>
   </div>
 </div>
@@ -887,11 +900,12 @@ function hideRegistro(){
   registroData={};
 }
 function registro_renderStep(step){
-  document.getElementById('registro-step').textContent='Paso '+step+' de 3';
+  document.getElementById('registro-step').textContent='Paso '+step+' de 4';
   document.getElementById('registro-step1').style.display=step===1?'block':'none';
   document.getElementById('registro-step2').style.display=step===2?'block':'none';
   const s3=document.getElementById('registro-step3');if(s3)s3.style.display=step===3?'block':'none';
-  document.getElementById('registro-progress').style.width=(step===1?33:step===2?66:100)+'%';
+  const s4=document.getElementById('registro-step4');if(s4)s4.style.display=step===4?'block':'none';
+  document.getElementById('registro-progress').style.width=(step===1?25:step===2?50:step===3?75:100)+'%';
 }
 function registro_step1_next(){
   const n=document.getElementById('reg-nombre').value.trim(),a=document.getElementById('reg-apellido').value.trim(),e=document.getElementById('reg-email').value.trim(),p=document.getElementById('reg-pass').value,err=document.getElementById('reg-err1');
@@ -952,8 +966,9 @@ function registro_step2_next(){
     registroData.sedeReal=registroData.sede;
     if(isMulti)registroData.sede='Multisede';
   }
+  _regSlotState = {};
   registro_renderStep(3);
-  registro_renderPago();
+  registro_renderHorarios();
 }
 function registro_renderPago(){
   const sedeKey = registroData.sedeReal || registroData.sede;
@@ -977,7 +992,7 @@ async function registro_crearCuenta(){
     let uc;try{uc=await auth.createUserWithEmailAndPassword(registroData.email,registroData.pass);}
     catch(e){if(e.code==='auth/email-already-in-use'){uc=await auth.signInWithEmailAndPassword(registroData.email,registroData.pass);}else if(e.code==='auth/configuration-not-found'){throw new Error('Firebase Auth no está habilitado. Activalo en Firebase Console → Authentication → Sign-in method.');}else throw e;}
     const p=PLANES[registroData.plan];
-    const ns={nombre:registroData.nombre,apellido:registroData.apellido,dni:registroData.dni||'',telefono:registroData.telefono||'',email:registroData.email,sede:registroData.sede,plan:registroData.plan,monto:p?p.monto:registroData.monto,creditos:p?p.creditos:0,metodo:'Sin especificar',ep:'Pendiente',inicio:new Date().toISOString().split('T')[0],horarios:'',lesiones:'',descuento:'',actividad:'',att:[0,0,0,0,0,0]};
+    const ns={nombre:registroData.nombre,apellido:registroData.apellido,dni:registroData.dni||'',telefono:registroData.telefono||'',email:registroData.email,sede:registroData.sede,plan:registroData.plan,monto:p?p.monto:registroData.monto,creditos:p?p.creditos:0,metodo:'Sin especificar',ep:'Pendiente',inicio:new Date().toISOString().split('T')[0],horarios:registroData.horarios||'',lesiones:'',descuento:'',actividad:'',att:[0,0,0,0,0,0]};
     const docRef=await db.collection('students').add(ns);
     portalStudent={...ns,id:docRef.id};
     document.getElementById('registro-screen').style.display='none';
@@ -988,13 +1003,193 @@ async function registro_crearCuenta(){
     err.textContent='Error: '+e.message;err.style.display='block';
   }
 }
-async function registro_completar(metodo,txId,pendingTransfer){if(pendingTransfer===undefined)pendingTransfer=false;const p=PLANES[registroData.plan];const err=document.getElementById('reg-err3');try{let uc;try{uc=await auth.createUserWithEmailAndPassword(registroData.email,registroData.pass);}catch(e){if(e.code==='auth/email-already-in-use'){uc=await auth.signInWithEmailAndPassword(registroData.email,registroData.pass);}else if(e.code==='auth/configuration-not-found'){throw new Error('Firebase Auth no está habilitado. Activalo en Firebase Console → Authentication → Sign-in method.');}else throw e;}const ep=pendingTransfer?'Pendiente':'Al dia';const ns={nombre:registroData.nombre,apellido:registroData.apellido,dni:registroData.dni||'',telefono:registroData.telefono||'',email:registroData.email,sede:registroData.sede,plan:registroData.plan,monto:p?p.monto:registroData.monto,creditos:p?p.creditos:0,metodo,ep,inicio:new Date().toISOString().split('T')[0],horarios:'',lesiones:'',descuento:'',actividad:'',att:[0,0,0,0,0,0],txId:txId||'',comprobante:registroData.comprobante||''};const docRef=await db.collection('students').add(ns);if(pendingTransfer){await db.collection('solicitudes').add({tipo:'confirmar_pago',mensaje:registroData.nombre+' '+registroData.apellido+' pago por transferencia. Pendiente confirmacion.',data:registroData.plan,clienteId:docRef.id,clienteNombre:registroData.nombre+' '+registroData.apellido,sede:registroData.sede,estado:'pendiente',createdAt:new Date().toISOString()});}document.getElementById('registro-screen').style.display='none';document.getElementById('registro-ok-screen').style.display='flex';document.getElementById('reg-ok-msg').textContent=pendingTransfer?'Comprobante recibido. Te confirmamos el acceso en las proximas horas.':'Pago aprobado. Ya podes acceder a tu portal.';if(!pendingTransfer){setTimeout(async()=>{portalStudent={...ns,id:docRef.id};document.getElementById('registro-ok-screen').style.display='none';showPortal();},2000);}}catch(e){const btn=document.getElementById('reg-btn-pagar');if(btn){btn.disabled=false;btn.textContent='Reintentar';}err.textContent='Error: '+e.message;err.style.display='block';}}
+async function registro_completar(metodo,txId,pendingTransfer){if(pendingTransfer===undefined)pendingTransfer=false;const p=PLANES[registroData.plan];const err=document.getElementById('reg-err3h');try{let uc;try{uc=await auth.createUserWithEmailAndPassword(registroData.email,registroData.pass);}catch(e){if(e.code==='auth/email-already-in-use'){uc=await auth.signInWithEmailAndPassword(registroData.email,registroData.pass);}else if(e.code==='auth/configuration-not-found'){throw new Error('Firebase Auth no está habilitado. Activalo en Firebase Console → Authentication → Sign-in method.');}else throw e;}const ep=pendingTransfer?'Pendiente':'Al dia';const ns={nombre:registroData.nombre,apellido:registroData.apellido,dni:registroData.dni||'',telefono:registroData.telefono||'',email:registroData.email,sede:registroData.sede,plan:registroData.plan,monto:p?p.monto:registroData.monto,creditos:p?p.creditos:0,metodo,ep,inicio:new Date().toISOString().split('T')[0],horarios:registroData.horarios||'',lesiones:'',descuento:'',actividad:'',att:[0,0,0,0,0,0],txId:txId||'',comprobante:registroData.comprobante||''};const docRef=await db.collection('students').add(ns);if(pendingTransfer){await db.collection('solicitudes').add({tipo:'confirmar_pago',mensaje:registroData.nombre+' '+registroData.apellido+' pago por transferencia. Pendiente confirmacion.',data:registroData.plan,clienteId:docRef.id,clienteNombre:registroData.nombre+' '+registroData.apellido,sede:registroData.sede,estado:'pendiente',createdAt:new Date().toISOString()});}document.getElementById('registro-screen').style.display='none';document.getElementById('registro-ok-screen').style.display='flex';document.getElementById('reg-ok-msg').textContent=pendingTransfer?'Comprobante recibido. Te confirmamos el acceso en las proximas horas.':'Pago aprobado. Ya podes acceder a tu portal.';if(!pendingTransfer){setTimeout(async()=>{portalStudent={...ns,id:docRef.id};document.getElementById('registro-ok-screen').style.display='none';showPortal();},2000);}}catch(e){const btn=document.getElementById('reg-btn-pagar');if(btn){btn.disabled=false;btn.textContent='Reintentar';}err.textContent='Error: '+e.message;err.style.display='block';}}
 function registro_irAlPortal(){
   document.getElementById('registro-ok-screen').style.display='none';
   if(portalStudent){showPortal();}else{showPortalLogin();}
 }
 
+
+// ── Slot state for registration ────────────────────────────────
+let _regSlotState = {};  // {slot_0: {sede, actividad, dia, hora}, ...}
+
+function _regSaveSlotRow(i){
+  const sedeVal = registroData.sede==='Multisede'?'Multisede':registroData.sede;
+  const isMulti = registroData.sede==='Multisede';
+  const sedeEl  = document.getElementById('reg-slot-sede-'+i);
+  const actEl   = document.getElementById('reg-slot-act-'+i);
+  const diaEl   = document.getElementById('reg-slot-dia-'+i);
+  const horaEl  = document.getElementById('reg-slot-hora-'+i);
+  _regSlotState['slot_'+i] = {
+    sede:      isMulti?(sedeEl?sedeEl.value:''):registroData.sedeReal||registroData.sede,
+    actividad: actEl?actEl.value:'',
+    dia:       diaEl?diaEl.value:'',
+    hora:      horaEl?horaEl.value:''
+  };
+  _regUpdateHorarioHidden();
+}
+
+function _regUpdateHorarioHidden(){
+  const planKey = registroData.plan;
+  const p = PLANES[planKey];
+  const n = p?p.dias:1;
+  const isMulti = registroData.sede==='Multisede';
+  const parts=[];
+  for(let i=0;i<n;i++){
+    const row=_regSlotState['slot_'+i]||{};
+    if(!row.dia||!row.hora)continue;
+    const h=row.hora.replace(':00','');
+    const dl=row.dia.substring(0,3);
+    const slotStr=dl+' '+h+'hs';
+    const sedeR=registroData.sedeReal||registroData.sede;
+    const acts=ACTIVIDADES_SEDE[row.sede||sedeR]||['Pilates Reformer'];
+    const multiAct=acts.length>1;
+    const actPrefix=(multiAct&&row.actividad)?row.actividad+': ':'';
+    const sedePrefix=isMulti&&row.sede?row.sede+' ':'';
+    parts.push(sedePrefix+actPrefix+slotStr);
+  }
+  registroData.horarios = parts.join(' / ');
+}
+
+function regSlotSedeChange(i){
+  _regSlotState['slot_'+i]={};
+  const sedeEl=document.getElementById('reg-slot-sede-'+i);
+  const sede=sedeEl?sedeEl.value:'';
+  const actEl=document.getElementById('reg-slot-act-'+i);
+  if(actEl){
+    const acts=ACTIVIDADES_SEDE[sede]||['Pilates Reformer'];
+    actEl.innerHTML='<option value="">— Actividad —</option>'+acts.map(a=>'<option value="'+a+'">'+a+'</option>').join('');
+  }
+  const diaEl=document.getElementById('reg-slot-dia-'+i);
+  if(diaEl)diaEl.innerHTML='<option value="">— Día —</option>';
+  const horaEl=document.getElementById('reg-slot-hora-'+i);
+  if(horaEl)horaEl.innerHTML='<option value="">— Horario —</option>';
+}
+
+function regSlotActChange(i){
+  const sedeVal=registroData.sedeReal||registroData.sede;
+  const isMulti=registroData.sede==='Multisede';
+  const sedeEl=document.getElementById('reg-slot-sede-'+i);
+  const actEl=document.getElementById('reg-slot-act-'+i);
+  const sede=isMulti?(sedeEl?sedeEl.value:sedeVal):sedeVal;
+  const act=actEl?actEl.value:'';
+  const diaEl=document.getElementById('reg-slot-dia-'+i);
+  if(diaEl&&sede&&act){
+    const dias=getDiasForSedeAct(sede,act);
+    diaEl.innerHTML='<option value="">— Día —</option>'+dias.map(d=>'<option value="'+d+'">'+d+'</option>').join('');
+  }
+  const horaEl=document.getElementById('reg-slot-hora-'+i);
+  if(horaEl)horaEl.innerHTML='<option value="">— Horario —</option>';
+  _regSaveSlotRow(i);
+}
+
+function regSlotDiaChange(i){
+  const sedeVal=registroData.sedeReal||registroData.sede;
+  const isMulti=registroData.sede==='Multisede';
+  const sedeEl=document.getElementById('reg-slot-sede-'+i);
+  const actEl=document.getElementById('reg-slot-act-'+i);
+  const diaEl=document.getElementById('reg-slot-dia-'+i);
+  const sede=isMulti?(sedeEl?sedeEl.value:sedeVal):sedeVal;
+  const act=actEl?actEl.value:'';
+  const dia=diaEl?diaEl.value:'';
+  const horaEl=document.getElementById('reg-slot-hora-'+i);
+  if(horaEl&&sede&&act&&dia){
+    const slots=getSlotsForSedeActDia(sede,act,dia);
+    horaEl.innerHTML='<option value="">— Horario —</option>'+slots.map(h=>'<option value="'+h+'">'+h.replace(':00','')+'hs</option>').join('');
+  }
+  _regSaveSlotRow(i);
+}
+
+function regSlotHoraChange(i){
+  _regSaveSlotRow(i);
+}
+
+function regClearSlot(i){
+  _regSlotState['slot_'+i]={};
+  ['reg-slot-sede-','reg-slot-act-','reg-slot-dia-','reg-slot-hora-'].forEach(prefix=>{
+    const el=document.getElementById(prefix+i);
+    if(el&&el.tagName==='SELECT')el.value='';
+  });
+  _regUpdateHorarioHidden();
+}
+
+function registro_renderHorarios(){
+  const cont=document.getElementById('reg-horarios-cont');
+  if(!cont)return;
+  const planKey=registroData.plan;
+  const p=PLANES[planKey];
+  const n=p?p.dias:1;
+  const isMulti=registroData.sede==='Multisede';
+  const sedeReal=registroData.sedeReal||registroData.sede;
+  _regSlotState={};
+
+  let h='<div style="display:flex;flex-direction:column;gap:10px;">';
+  for(let i=0;i<n;i++){
+    const acts=isMulti?['Pilates Reformer']:(ACTIVIDADES_SEDE[sedeReal]||['Pilates Reformer']);
+    const showSede=isMulti;
+    const showAct=isMulti||acts.length>1;
+    let cols=showSede&&showAct?'1fr 1fr 1fr 1fr auto':showAct?'1fr 1fr 1fr auto':'1fr 1fr auto';
+    h+='<div style="display:grid;grid-template-columns:'+cols+';gap:8px;align-items:center;">';
+
+    if(showSede){
+      h+='<select class="fsel" style="font-size:13px;" onchange="regSlotSedeChange('+i+')" id="reg-slot-sede-'+i+'">';
+      h+='<option value="">— Sede —</option>';
+      ['Amarras','Centro','Faro'].forEach(s=>h+='<option value="'+s+'">'+s+'</option>');
+      h+='</select>';
+    }
+
+    if(showAct){
+      h+='<select class="fsel" style="font-size:13px;" onchange="regSlotActChange('+i+')" id="reg-slot-act-'+i+'">';
+      h+='<option value="">— Actividad —</option>';
+      (isMulti?[]:acts).forEach(a=>h+='<option value="'+a+'">'+a+'</option>');
+      h+='</select>';
+    } else {
+      // Single activity - show as hidden + label
+      h+='<input type="hidden" id="reg-slot-act-'+i+'" value="'+acts[0]+'">';
+    }
+
+    // Day - populated after activity selected (or immediately for single-activity sede)
+    const initialDias = (!showAct&&!showSede)?getDiasForSedeAct(sedeReal,acts[0]):[];
+    h+='<select class="fsel" style="font-size:13px;" onchange="regSlotDiaChange('+i+')" id="reg-slot-dia-'+i+'">';
+    h+='<option value="">— Día —</option>';
+    initialDias.forEach(d=>h+='<option value="'+d+'">'+d+'</option>');
+    h+='</select>';
+
+    h+='<select class="fsel" style="font-size:13px;" onchange="regSlotHoraChange('+i+')" id="reg-slot-hora-'+i+'">';
+    h+='<option value="">— Horario —</option>';
+    h+='</select>';
+
+    h+='<button type="button" onclick="regClearSlot('+i+')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0;">✕</button>';
+    h+='</div>';
+  }
+  h+='</div>';
+  cont.innerHTML=h;
+}
+
+function registro_step3_next(){
+  // Validate all slots filled
+  const planKey=registroData.plan;
+  const p=PLANES[planKey];
+  const n=p?p.dias:1;
+  let filled=0;
+  for(let i=0;i<n;i++){
+    const row=_regSlotState['slot_'+i]||{};
+    if(row.dia&&row.hora)filled++;
+  }
+  if(filled<n){
+    const err=document.getElementById('reg-err3h');
+    if(err){err.textContent='Completá todos los turnos ('+filled+'/'+n+' seleccionados).';err.style.display='block';}
+    return;
+  }
+  const err=document.getElementById('reg-err3h');
+  if(err)err.style.display='none';
+  registro_renderStep(4);
+  registro_renderPago();
+}
+
 window.addEventListener('load', initPortal);
+
+
 </script>
 </body>
 </html>
