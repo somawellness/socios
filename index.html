@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOMA Wellness — Portal del Cliente</title>
+<style>
+
+:root{
+  --sage:#7a9e7a;--sage-l:#b5c7b5;--sage-d:#4d7a4d;
+  --cream:#f5f0e8;--warm:#faf8f4;--char:#2c2c2c;
+  --clay:#b07d5a;--muted:#7a7a7a;--border:#e0d8cc;
+  --ok:#5d9e5d;--warn:#c4962a;--err:#c46a5a;
+  --sw:260px;--cr:14px;
+  --sh:0 4px 24px rgba(44,44,44,.07);
+  --shh:0 8px 32px rgba(44,44,44,.13);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--char);min-height:100vh;display:flex}
+.loading-screen{position:fixed;inset:0;background:var(--char);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
+.loading-screen.hide{opacity:0;pointer-events:none}
+
+.ls-sub{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:32px}
+.spinner{width:32px;height:32px;border:2px solid rgba(255,255,255,.1);border-top-color:var(--sage-l);border-radius:50%;animation:spin .8s linear infinite}
+.ls-status{font-size:11px;color:rgba(255,255,255,.3);margin-top:14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--sage);display:inline-block;margin-right:5px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sync-err{background:var(--err);animation:none}
+.login-screen{position:fixed;inset:0;background:var(--char);display:flex;align-items:center;justify-content:center;z-index:998}
+.login-card{background:var(--warm);border-radius:24px;padding:48px 44px;width:400px;box-shadow:0 32px 80px rgba(0,0,0,.3)}
+
+
+.login-sub{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:32px}
+.ll{font-size:11.5px;font-weight:500;color:var(--muted);display:block;margin-bottom:5px}
+.li{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13.5px;background:var(--cream);outline:none;transition:border-color .2s;margin-bottom:14px}
+.li:focus{border-color:var(--sage)}
+.lb{width:100%;padding:12px;background:var(--sage-d);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;margin-top:4px}
+.lb:hover{background:var(--sage)}
+.sidebar{width:var(--sw);background:var(--char);min-height:100vh;position:fixed;left:0;top:0;display:flex;flex-direction:column;z-index:100}
+
+
+.sb-tag{font-size:8px;color:rgba(255,255,255,.22);letter-spacing:2px;text-transform:uppercase;margin-top:5px}
+.up{margin:12px 12px 0;background:rgba(255,255,255,.06);border-radius:10px;padding:9px 11px;display:flex;align-items:center;gap:8px}
+.up-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0}
+.up-name{font-size:12px;color:var(--cream);font-weight:500}
+.up-role{font-size:9.5px;color:rgba(255,255,255,.38);margin-top:1px}
+.up-out{margin-left:auto;font-size:10px;color:rgba(255,255,255,.28);cursor:pointer;padding:3px 6px;border-radius:4px;border:1px solid rgba(255,255,255,.1)}
+.up-out:hover{color:var(--cream);border-color:rgba(255,255,255,.3)}
+.sede-sel{margin:10px 12px 0}
+.sede-sel select{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:var(--cream);border-radius:8px;padding:8px 11px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;cursor:pointer}
+.sede-sel select option{background:var(--char)}
+nav{padding:10px 0;flex:1;overflow-y:auto}
+.nav-sec{padding:7px 16px 3px;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.2);margin-top:6px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 18px;cursor:pointer;color:rgba(255,255,255,.48);font-size:12.5px;transition:all .2s;border-left:2px solid transparent;margin:1px 0}
+.nav-item:hover{color:var(--cream);background:rgba(255,255,255,.04)}
+.nav-item.active{color:var(--sage-l);border-left-color:var(--sage-l);background:rgba(122,158,122,.1)}
+.nav-ico{font-size:14px;width:17px;text-align:center}
+.nav-badge{margin-left:auto;background:var(--err);color:#fff;font-size:9.5px;padding:2px 6px;border-radius:10px;font-weight:500}
+.sb-foot{padding:12px 16px;border-top:1px solid rgba(255,255,255,.07);font-size:10px;color:rgba(255,255,255,.18)}
+.main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--warm);border-bottom:1px solid var(--border);padding:0 26px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.tb-left{display:flex;align-items:center;gap:14px}
+.tb-title{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:400}
+.sede-badge{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:500}
+.sede-amarras{background:rgba(122,140,122,.15);color:#4d7a4d}
+.sede-centro{background:rgba(176,125,90,.15);color:#7a4d2a}
+.sede-faro{background:rgba(122,122,170,.15);color:#4a4a9a}
+.sede-todas{background:rgba(122,122,122,.12);color:var(--muted)}
+.tb-right{display:flex;align-items:center;gap:9px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:var(--cream);border:1px solid var(--border);border-radius:20px;font-size:11px;color:var(--muted)}
+.content{padding:26px 30px;flex:1}
+.view{display:none}
+.view.active{display:block;animation:fadeIn .22s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:12.5px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;border:none;transition:all .2s}
+.btn-p{background:var(--sage-d);color:#fff}.btn-p:hover{background:var(--sage);transform:translateY(-1px)}
+.btn-o{background:transparent;border:1.5px solid var(--border);color:var(--char)}.btn-o:hover{border-color:var(--sage);color:var(--sage-d)}
+.btn-g{background:transparent;color:var(--muted);padding:7px 10px}.btn-g:hover{background:var(--cream);color:var(--char)}
+.btn-sm{padding:5px 11px;font-size:11.5px}
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.sc{background:var(--warm);border-radius:var(--cr);padding:20px 22px;box-shadow:var(--sh);position:relative;overflow:hidden;transition:transform .2s}
+.sc:hover{transform:translateY(-2px)}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.sc-g::before{background:var(--sage)}.sc-c::before{background:var(--clay)}
+.sc-b::before{background:#c49080}.sc-w::before{background:var(--warn)}.sc-m::before{background:#5a8a5a}
+.sl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.sv{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;line-height:1;margin-bottom:5px}
+.ss{font-size:11px;color:var(--muted)}
+.card{background:var(--warm);border-radius:var(--cr);padding:24px 26px;box-shadow:var(--sh)}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.ct{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:400}
+.dg{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.tw{background:var(--warm);border-radius:var(--cr);box-shadow:var(--sh);overflow:hidden}
+.ttb{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap}
+.srch{display:flex;align-items:center;gap:7px;background:var(--cream);border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;min-width:200px;transition:border-color .2s}
+.srch:focus-within{border-color:var(--sage)}
+.srch input{border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:12.5px;color:var(--char);outline:none;width:100%}
+.srch input::placeholder{color:var(--muted)}
+.fsel{padding:7px 11px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:11.5px;background:var(--cream);color:var(--char);outline:none;cursor:pointer}
+.fsel:focus{border-color:var(--sage)}
+table{width:100%;border-collapse:collapse}
+thead th{padding:10px 16px;text-align:left;font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);background:var(--cream);font-weight:500;border-bottom:1px solid var(--border)}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(122,158,122,.04)}
+tbody td{padding:12px 16px;font-size:12.5px;color:var(--char);vertical-align:middle}
+.av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex-shrink:0}
+.sc2{display:flex;align-items:center;gap:9px}
+.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:500}
+.b-ok{background:rgba(93,158,93,.13);color:var(--ok)}.b-warn{background:rgba(196,150,42,.13);color:var(--warn)}
+.b-err{background:rgba(196,106,90,.13);color:var(--err)}.b-blue{background:rgba(122,140,170,.13);color:#5a7aaa}
+.b-neu{background:rgba(122,122,122,.1);color:var(--muted)}
+.pgr{display:flex;align-items:center;justify-content:space-between;padding:11px 20px;border-top:1px solid var(--border);background:var(--cream)}
+.pgr-i{font-size:11px;color:var(--muted)}
+.pgr-b{display:flex;gap:4px}
+.pb2{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1.5px solid var(--border);background:transparent;font-size:12px;color:var(--muted);transition:all .15s;font-family:'DM Sans',sans-serif}
+.pb2:hover,.pb2.act{background:var(--sage-d);color:#fff;border-color:var(--sage-d)}
+.ibt{width:27px;height:27px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;background:transparent;color:var(--muted);font-size:13px;transition:all .15s}
+.ibt:hover{background:var(--cream);color:var(--char)}
+.ibt.ed:hover{color:var(--sage-d)}.ibt.dl:hover{color:var(--err);background:rgba(196,106,90,.07)}
+.tact{display:flex;gap:4px;align-items:center}
+.ov{position:fixed;inset:0;background:rgba(44,44,44,.45);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+.ov.open{opacity:1;pointer-events:all}
+.modal{background:var(--warm);border-radius:20px;width:680px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 24px 80px rgba(44,44,44,.2);transform:translateY(20px) scale(.98);transition:transform .25s;padding:32px}
+.ov.open .modal{transform:translateY(0) scale(1)}
+.mhd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
+.mt{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400}
+.ms{font-size:12px;color:var(--muted);margin-top:2px}
+.cbtn{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1.5px solid var(--border);background:transparent;font-size:14px;color:var(--muted);transition:all .15s}
+.cbtn:hover{background:var(--cream);color:var(--char)}
+.fsec{margin-bottom:20px}
+.fst{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--sage-d);margin-bottom:11px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.fg3{grid-template-columns:1fr 1fr 1fr}
+.fg1{grid-template-columns:1fr}
+.fgrp{display:flex;flex-direction:column;gap:4px}
+.fgrp.full{grid-column:1/-1}
+label{font-size:10.5px;font-weight:500;color:var(--muted);letter-spacing:.3px}
+input,select,textarea{font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 12px;border:1.5px solid var(--border);border-radius:7px;background:var(--cream);color:var(--char);outline:none;transition:border-color .2s;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--sage);box-shadow:0 0 0 3px rgba(122,158,122,.1);background:#fff}
+textarea{resize:vertical;min-height:68px}
+.mft{display:flex;justify-content:flex-end;gap:9px;margin-top:22px;padding-top:16px;border-top:1px solid var(--border)}
+.hs-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:5px}
+.hs-slot{padding:8px 9px;border:1.5px solid var(--border);border-radius:7px;cursor:pointer;transition:all .15s;font-size:11.5px}
+.hs-slot:hover:not(.hs-full):not(.hs-sel){border-color:var(--sage);background:rgba(122,158,122,.06)}
+.hs-slot.hs-sel{border-color:var(--sage-d);background:rgba(77,122,77,.12);color:var(--sage-d);font-weight:600}
+.hs-slot.hs-full{border-color:rgba(196,106,90,.3);background:rgba(196,106,90,.05);color:var(--err);cursor:not-allowed;opacity:.75}
+.hs-day-title{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:12px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.sch-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:22px}
+.sch-day{background:var(--warm);border-radius:12px;padding:14px 12px;box-shadow:var(--sh)}
+.sd-name{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;text-align:center}
+.sd-slot{padding:7px 8px;border-radius:6px;margin-bottom:5px;cursor:pointer;transition:all .15s;border-left:3px solid var(--sage);background:rgba(122,158,122,.06)}
+.sd-slot:hover{transform:translateX(2px)}
+.sd-slot.full-slot{border-left-color:var(--err);background:rgba(196,106,90,.05)}
+.sd-time{font-size:11.5px;font-weight:500}
+.sd-cnt{font-size:10px;color:var(--muted);margin-top:1px}
+.ci-card{background:var(--warm);border-radius:12px;padding:16px 20px;box-shadow:var(--sh);margin-bottom:10px;cursor:pointer;transition:all .2s;border:1.5px solid transparent}
+.ci-card:hover{border-color:var(--sage-l);transform:translateY(-1px)}
+.ci-hdr{display:flex;align-items:center;justify-content:space-between}
+.ci-time{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:400}
+.ci-info{font-size:11px;color:var(--muted);margin-top:2px}
+.ci-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.ci-row:last-child{border-bottom:none}
+.ci-chk{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;font-size:12px}
+.ci-chk.checked{background:var(--sage-d);border-color:var(--sage-d);color:#fff}
+.ci-chk:hover:not(.checked){border-color:var(--sage)}
+.wk-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-bottom:22px}
+.wk-day{background:var(--warm);border-radius:10px;padding:13px 9px;text-align:center;box-shadow:var(--sh);cursor:pointer;transition:all .2s}
+.wk-day:hover{transform:translateY(-2px)}
+.wk-day.today{border:2px solid var(--sage)}
+.wkdn{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.wknum{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300}
+.wkcnt{font-size:10.5px;color:var(--sage-d);margin-top:3px;font-weight:500}
+.dp{position:fixed;right:0;top:0;bottom:0;width:360px;background:var(--warm);box-shadow:-8px 0 40px rgba(44,44,44,.1);z-index:150;padding:26px;overflow-y:auto;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.dp.open{transform:translateX(0)}
+.dp-av{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 12px;font-family:'Cormorant Garamond',serif}
+.dp-name{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;text-align:center;margin-bottom:3px}
+.dp-sub{text-align:center;font-size:11.5px;color:var(--muted);margin-bottom:14px}
+.dp-sec{margin-bottom:16px}
+.dp-st{font-size:8.5px;letter-spacing:2px;text-transform:uppercase;color:var(--sage-d);margin-bottom:8px}
+.dp-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+.dp-row:last-child{border-bottom:none}
+.dp-k{color:var(--muted)}.dp-v{font-weight:500;text-align:right;max-width:190px;font-size:12px}
+.divr{height:1px;background:var(--border);margin:14px 0}
+.rg{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.rc{background:var(--warm);border-radius:var(--cr);padding:20px;box-shadow:var(--sh);cursor:pointer;transition:all .2s;border:1.5px solid transparent}
+.rc:hover{border-color:var(--sage-l);transform:translateY(-2px)}
+.ri{font-size:28px;margin-bottom:11px}
+.rn{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:400;margin-bottom:4px}
+.rd{font-size:11px;color:var(--muted);line-height:1.5}
+.plan-card{background:var(--warm);border-radius:12px;padding:16px 20px;box-shadow:var(--sh);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;transition:all .2s}
+.plan-card:hover{transform:translateY(-1px);box-shadow:var(--shh)}
+.plan-name{font-weight:500;font-size:14px}
+.plan-detail{font-size:11.5px;color:var(--muted);margin-top:2px}
+.plan-price{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;color:var(--sage-d)}
+.disc-card{background:rgba(122,158,122,.06);border:1.5px solid var(--sage-l);border-radius:10px;padding:14px 16px;margin-bottom:8px}
+.disc-name{font-weight:600;font-size:13px;color:var(--sage-d)}
+.disc-desc{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.bch{display:flex;align-items:flex-end;gap:6px;height:88px;margin-top:7px}
+.bw{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar{width:100%;border-radius:4px 4px 0 0;background:var(--sage-l);min-height:3px;transition:height .6s cubic-bezier(.4,0,.2,1)}
+.bar:hover{background:var(--sage-d)}.bl{font-size:9px;color:var(--muted)}
+.pb-w{background:var(--border);border-radius:4px;height:5px;overflow:hidden;margin-top:4px}
+.pb-f{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--char);color:var(--cream);padding:12px 18px;border-radius:10px;font-size:12.5px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(44,44,44,.2);transform:translateY(20px);opacity:0;transition:all .3s;z-index:300;max-width:320px}
+.toast.show{transform:translateY(0);opacity:1}
+.alert-box{display:flex;align-items:flex-start;gap:9px;padding:11px 14px;border-radius:8px;font-size:12px;margin-bottom:12px}
+.al-warn{background:rgba(196,150,42,.1);border-left:3px solid var(--warn);color:#7a5e1a}
+.al-blue{background:rgba(26,115,232,.1);border-left:3px solid #1a73e8;color:#1a3e6e}
+.al-ok{background:rgba(93,158,93,.1);border-left:3px solid var(--ok);color:#2a5e2a}
+.cred-pill{display:inline-flex;align-items:center;gap:4px;background:rgba(122,158,122,.12);color:var(--sage-d);border-radius:20px;padding:2px 9px;font-size:11px;font-weight:500}
+input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500}
+.role-admin .ao{display:flex!important}.role-instructor .ao{display:none!important}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* LOGO DISPLAY - no filter, use natural appearance */
+.ls-logo { background: #f5f0e8; border-radius: 16px; padding: 16px 28px; margin-bottom: 16px; display: inline-block; }
+.ls-logo img { height: 48px; display: block; filter: none !important; }
+.login-logo { text-align: center; margin-bottom: 8px; }
+.login-logo img { height: 48px; filter: none !important; display: inline-block; }
+.sb-logo { padding: 18px 16px 16px; border-bottom: 1px solid rgba(255,255,255,.08); text-align: center; }
+.sb-logo-inner { background: #f5f0e8; border-radius: 10px; padding: 10px 16px; display: inline-block; }
+.sb-logo-inner img { height: 30px; display: block; filter: none !important; }
+
+/* FINANCIERO */
+.fin-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+.fin-tab{padding:7px 18px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid var(--border);background:transparent;color:var(--muted);transition:all .2s;font-family:'DM Sans',sans-serif}
+.fin-tab.active{background:var(--sage-d);color:#fff;border-color:var(--sage-d)}
+.fin-tab:hover:not(.active){border-color:var(--sage);color:var(--sage-d)}
+.fin-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.fin-item{background:var(--warm);border-radius:var(--cr);padding:18px 20px;box-shadow:var(--sh)}
+.fin-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.fin-value{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:300;color:var(--sage-d)}
+.fin-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.tx-row{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);transition:background .15s;gap:10px}
+.tx-row:last-child{border-bottom:none}
+.tx-row:hover{background:rgba(122,158,122,.04)}
+.tx-ico{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.tx-name{font-weight:500;font-size:13px}
+.tx-detail{font-size:11px;color:var(--muted);margin-top:1px}
+.tx-amount{font-weight:600;font-size:14px;color:var(--ok)}
+.tx-date{font-size:10.5px;color:var(--muted);text-align:right;margin-top:2px}
+
+/* PLAN EDITOR */
+.plan-edit-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--warm);border-radius:10px;box-shadow:var(--sh);margin-bottom:8px;gap:10px;flex-wrap:wrap}
+.plan-edit-name{font-weight:500;font-size:13px;min-width:160px}
+.plan-edit-detail{font-size:11px;color:var(--muted)}
+.plan-edit-price{display:flex;align-items:center;gap:8px}
+.plan-price-input{width:120px;font-family:'DM Sans',sans-serif;font-size:13px;padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;background:var(--cream);color:var(--sage-d);font-weight:600;outline:none;text-align:right}
+.plan-price-input:focus{border-color:var(--sage);background:#fff}
+
+/* SLOT DETAIL POPUP */
+.slot-popup{position:absolute;background:var(--warm);border-radius:12px;box-shadow:0 8px 32px rgba(44,44,44,.15);padding:16px;z-index:100;min-width:220px;border:1px solid var(--border)}
+.slot-popup-name{font-size:12px;font-weight:500;margin-bottom:4px}
+.slot-popup-detail{font-size:11px;color:var(--muted)}
+
+
+/* ═══════════════════════════════════
+   RESPONSIVE MOBILE DESIGN
+   ═══════════════════════════════════ */
+
+/* MOBILE NAV BAR (bottom) */
+.mobile-topbar{display:none;position:fixed;top:0;left:0;right:0;height:56px;background:var(--char);z-index:200;align-items:center;padding:0 16px;gap:12px}
+.mobile-topbar img{height:28px}
+.mobile-menu-btn{margin-left:auto;width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.mobile-badge-icon{position:relative;display:inline-flex}
+.mobile-badge-dot{position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--err);border:2px solid var(--char)}
+
+/* BOTTOM NAV */
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--char);z-index:200;padding:8px 0 max(8px,env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,.08)}
+.bottom-nav-items{display:flex;justify-content:space-around;align-items:center}
+.bn-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 12px;cursor:pointer;color:rgba(255,255,255,.4);transition:color .2s;border:none;background:transparent;font-family:'DM Sans',sans-serif;position:relative;min-width:52px}
+.bn-item.active{color:var(--sage-l)}
+.bn-item.active .bn-ico{color:var(--sage-l)}
+.bn-ico{font-size:20px;line-height:1}
+.bn-lbl{font-size:9px;letter-spacing:.3px;text-transform:uppercase;font-weight:500}
+.bn-badge{position:absolute;top:2px;right:8px;background:var(--err);color:#fff;font-size:8px;padding:1px 4px;border-radius:8px;font-weight:700;min-width:14px;text-align:center}
+
+/* SLIDE-UP MENU */
+.mobile-menu-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;opacity:0;transition:opacity .25s}
+.mobile-menu-overlay.open{opacity:1}
+.mobile-menu-panel{position:fixed;bottom:0;left:0;right:0;background:var(--char);border-radius:20px 20px 0 0;z-index:301;padding:16px 0 max(20px,env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.mobile-menu-overlay.open .mobile-menu-panel{transform:translateY(0)}
+.mm-handle{width:36px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin:0 auto 16px}
+.mm-user{padding:0 20px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px}
+.mm-items{padding:8px 0}
+.mm-item{display:flex;align-items:center;gap:12px;padding:13px 20px;color:rgba(255,255,255,.7);font-size:15px;cursor:pointer;transition:background .15s}
+.mm-item:hover,.mm-item.active{background:rgba(255,255,255,.06);color:#fff}
+.mm-item.active{color:var(--sage-l)}
+.mm-ico{font-size:18px;width:22px;text-align:center}
+
+/* MOBILE CONTENT ADJUSTMENTS */
+@media(max-width:768px){
+  body{background:var(--cream)}
+  .sidebar,.topbar{display:none!important}
+  .mobile-topbar{display:flex}
+  .bottom-nav{display:block}
+  .main{margin-left:0;padding-top:56px;padding-bottom:72px}
+  .content{padding:16px 14px}
+  
+  /* STAT CARDS - 2 columns on mobile */
+  .sg{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .sc{padding:14px 14px}
+  .sv{font-size:26px}
+  .sl{font-size:9px}
+  
+  /* DG grid - stack on mobile */
+  .dg{grid-template-columns:1fr;gap:12px}
+  .card{padding:16px 14px}
+  
+  /* SEDE BREAKDOWN - stack */
+  #sede-breakdown > div{grid-template-columns:1fr!important}
+  
+  /* TABLES → CARDS */
+  .tw{border-radius:10px}
+  .ttb{padding:12px 14px;flex-direction:column;align-items:flex-start;gap:10px}
+  .ttb .srch{width:100%;min-width:unset}
+  .ttb > div:last-child{width:100%;display:flex;gap:6px;flex-wrap:wrap}
+  .ttb select,.ttb .fsel{flex:1}
+  
+  table{display:none!important}
+  .mobile-cards{display:block}
+  
+  /* MOBILE STUDENT CARD */
+  .m-card{background:var(--warm);border-radius:10px;padding:14px;margin-bottom:8px;cursor:pointer;transition:all .2s;box-shadow:var(--sh);border:1.5px solid transparent;display:flex;align-items:center;gap:12px}
+  .m-card:active{transform:scale(.98);border-color:var(--sage-l)}
+  .m-card-body{flex:1;min-width:0}
+  .m-card-name{font-weight:600;font-size:14px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .m-card-detail{font-size:11.5px;color:var(--muted)}
+  .m-card-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+  
+  /* MODALS full screen on mobile */
+  .ov{align-items:flex-end;padding:0}
+  .modal{border-radius:20px 20px 0 0;width:100%!important;max-width:100%!important;max-height:92vh;padding:24px 20px}
+  .mhd{margin-bottom:18px}
+  
+  /* FORMS on mobile */
+  .fg,.fg3{grid-template-columns:1fr!important}
+  .fg .fgrp.full{grid-column:1}
+  
+  /* CHECK-IN mobile */
+  .ci-card{padding:14px}
+  .ci-time{font-size:17px}
+  .ci-row{padding:12px 0}
+  .ci-chk{width:28px;height:28px;font-size:14px}
+  
+  /* WEEK GRID */
+  .wk-grid{grid-template-columns:repeat(6,1fr);gap:5px}
+  .wk-day{padding:8px 4px}
+  .wknum{font-size:18px}
+  .wkdn{font-size:8px}
+  .wkcnt{font-size:10px}
+  
+  /* FINANCIERO mobile */
+  .fin-tabs{gap:6px}
+  .fin-tab{padding:6px 12px;font-size:11.5px}
+  .fin-summary{grid-template-columns:1fr;gap:10px}
+  .tx-row{padding:12px 14px}
+  
+  /* SCHEDULE mobile */
+  .sch-grid{grid-template-columns:repeat(3,1fr);gap:8px}
+  
+  /* PLANES mobile */
+  .plan-edit-row{flex-direction:column;align-items:flex-start;gap:8px}
+  .plan-edit-price{width:100%}
+  .plan-price-input{flex:1}
+  
+  /* DETAIL PANEL full screen */
+  .dp{width:100%;border-radius:20px 20px 0 0;padding:20px 18px}
+  
+  /* LOGIN mobile */
+  .login-card{width:100%;max-width:100%;border-radius:0;padding:36px 24px;min-height:100vh;display:flex;flex-direction:column;justify-content:center}
+  
+  /* LOADING mobile */
+  .loading-screen{padding:24px}
+
+  /* ALERTS */
+  .alert-box{font-size:11.5px}
+  
+  /* REPORT GRID */
+  .rg{grid-template-columns:1fr 1fr;gap:10px}
+  .rc{padding:14px}
+  .ri{font-size:22px;margin-bottom:8px}
+  .rn{font-size:13px}
+  
+  /* PAGINATOR */
+  .pgr{padding:10px 14px;flex-direction:column;gap:8px;align-items:flex-start}
+  
+  /* HORARIO SELECTOR */
+  .hs-grid{grid-template-columns:repeat(3,1fr)!important}
+}
+
+/* TABLET adjustments */
+@media(min-width:769px) and (max-width:1024px){
+  :root{--sw:200px}
+  .sg{grid-template-columns:repeat(2,1fr)}
+  .fin-summary{grid-template-columns:1fr 1fr}
+  .rg{grid-template-columns:repeat(2,1fr)}
+}
+
+.role-admin .ao{display:flex!important}.role-instructor .ao{display:none!important}
+</style>
+<style>
+.portal-wrap{min-height:100vh;display:flex;flex-direction:column;background:var(--bg);}
+.portal-header{background:var(--warm);border-bottom:1px solid var(--border);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.portal-body{padding:16px;max-width:600px;margin:0 auto;width:100%;box-sizing:border-box;}
+.portal-card{background:var(--warm);border-radius:16px;padding:20px;margin-bottom:14px;border:1px solid var(--border);}
+.portal-card-title{font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:12px;}
+.fs-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+.fs-scroll{position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0;}
+.auth-card{background:var(--warm);border-radius:20px;padding:36px;width:90%;max-width:380px;box-shadow:0 8px 40px rgba(0,0,0,.25);}
+.reg-card{background:var(--warm);border-radius:20px;padding:28px;width:90%;max-width:460px;box-shadow:0 8px 40px rgba(0,0,0,.25);margin:auto;}
+.reg-plan-card,.reg-sede-card{transition:all .15s;}
+.reg-plan-card:hover,.reg-sede-card:hover{background:rgba(77,122,77,.05);}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="fs-overlay">
+  <div class="auth-card">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:11px;letter-spacing:2px;color:var(--muted);margin-bottom:4px;">SOMA WELLNESS</div>
+      <div style="font-size:24px;font-weight:400;">Portal del Cliente</div>
+    </div>
+    <label class="ll">EMAIL</label>
+    <input id="portal-email" type="email" autocomplete="email" placeholder="tu@email.com" class="li" style="margin-bottom:10px;" onkeydown="if(event.key==='Enter')portalLoginEmail()">
+    <label class="ll">CONTRASEÑA</label>
+    <input id="portal-pass" type="password" autocomplete="current-password" placeholder="••••••••" class="li" style="margin-bottom:10px;" onkeydown="if(event.key==='Enter')portalLoginEmail()">
+    <div id="portal-err" style="display:none;font-size:12px;color:var(--err);margin-bottom:8px;"></div>
+    <button onclick="portalLoginEmail()" class="lb" style="margin-bottom:8px;">Ingresar</button>
+    <button onclick="portalLoginGoogle()" style="width:100%;padding:11px;background:#fff;color:#444;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;cursor:pointer;margin-bottom:12px;box-sizing:border-box;">Ingresar con Google</button>
+    <div style="text-align:center;font-size:12px;color:var(--muted);">Primera vez? <span onclick="showRegistro()" style="color:var(--sage-d);cursor:pointer;text-decoration:underline;">Crear cuenta</span></div>
+  </div>
+</div>
+
+<!-- REGISTRO -->
+<div id="registro-screen" class="fs-scroll" style="display:none;">
+  <div class="reg-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <div style="font-size:18px;font-weight:500;">Crear cuenta</div>
+      <button onclick="hideRegistro()" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;">&#x2715;</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px;" id="registro-step">Paso 1 de 3</div>
+    <div style="height:4px;background:var(--border);border-radius:4px;margin-bottom:24px;">
+      <div id="registro-progress" style="height:100%;width:33%;background:var(--sage-d);border-radius:4px;transition:width .3s;"></div>
+    </div>
+    <!-- Step 1 -->
+    <div id="registro-step1">
+      <div style="font-size:12px;font-weight:600;color:var(--sage-d);letter-spacing:1px;margin-bottom:14px;">TUS DATOS</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div><label class="ll">Nombre *</label><input class="li" id="reg-nombre" placeholder="Juan"></div>
+        <div><label class="ll">Apellido *</label><input class="li" id="reg-apellido" placeholder="Perez"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div><label class="ll">DNI</label><input class="li" id="reg-dni" placeholder="12345678" type="number"></div>
+        <div><label class="ll">Teléfono</label><input class="li" id="reg-tel" placeholder="+54 342..."></div>
+      </div>
+      <label class="ll">Email *</label>
+      <input class="li" id="reg-email" type="email" placeholder="tu@email.com" style="margin-bottom:10px;">
+      <label class="ll">Contraseña * (mín. 6 caracteres)</label>
+      <input class="li" id="reg-pass" type="password" placeholder="••••••••" style="margin-bottom:10px;">
+      <div id="reg-err1" style="display:none;font-size:12px;color:var(--err);margin-bottom:8px;"></div>
+      <button onclick="registro_step1_next()" class="lb" style="margin-top:8px;">Continuar →</button>
+    </div>
+    <!-- Step 2 -->
+    <div id="registro-step2" style="display:none;">
+      <div style="font-size:12px;font-weight:600;color:var(--sage-d);letter-spacing:1px;margin-bottom:8px;">ELEGÍ TU SEDE</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div class="reg-sede-card" data-sede="Amarras" onclick="registro_selSede(this)" style="border:2px solid var(--border);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer;">
+          <div style="font-size:22px;margin-bottom:4px;">📍</div>
+          <div style="font-size:13px;font-weight:600;">Amarras</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;">Pilates Reformer</div>
+        </div>
+        <div class="reg-sede-card" data-sede="Centro" onclick="registro_selSede(this)" style="border:2px solid var(--border);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer;">
+          <div style="font-size:22px;margin-bottom:4px;">📍</div>
+          <div style="font-size:13px;font-weight:600;">Centro</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;">Pilates · Yoga · Streaching · AFA</div>
+        </div>
+        <div class="reg-sede-card" data-sede="Faro" onclick="registro_selSede(this)" style="border:2px solid var(--border);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer;">
+          <div style="font-size:22px;margin-bottom:4px;">📍</div>
+          <div style="font-size:13px;font-weight:600;">Faro</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;">Pilates · Yoga · Streaching · AFA · Mov. Activo</div>
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <div class="reg-sede-card" data-sede="Multisede" onclick="registro_selSede(this)" style="border:2px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;display:flex;align-items:center;gap:12px;">
+          <div style="font-size:22px;">🏢</div>
+          <div><div style="font-size:13px;font-weight:600;">Multisede <span style="color:var(--sage-d);font-size:12px;">+$15.000</span></div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;">Acceso libre a Amarras, Centro y Faro</div></div>
+        </div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--sage-d);letter-spacing:1px;margin-bottom:8px;">ELEGÍ TU PLAN</div>
+      <div id="reg-plan-cards" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
+      <div id="reg-err2" style="display:none;font-size:12px;color:var(--err);margin-bottom:8px;"></div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="registro_renderStep(1)" class="btn btn-o" style="flex:1;">← Volver</button>
+        <button onclick="registro_step2_next()" class="lb" style="flex:2;">Continuar →</button>
+      </div>
+    </div>
+    <!-- Step 3 -->
+    <div id="registro-step3" style="display:none;">
+      <div style="font-size:12px;font-weight:600;color:var(--sage-d);letter-spacing:1px;margin-bottom:14px;">PAGO POR TRANSFERENCIA</div>
+      <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:14px;border:1px solid var(--border);font-size:13px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--muted);">Sede</span><strong id="reg-pago-sede"></strong></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--muted);">Plan</span><strong id="reg-pago-plan"></strong></div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:8px;"><span style="font-weight:600;">Total</span><strong style="color:var(--sage-d);font-size:16px;" id="reg-pago-monto"></strong></div>
+      </div>
+      <div style="background:var(--bg);border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid var(--border);">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Transferí a la cuenta de tu sede:</div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;">
+          <span style="color:var(--muted);">Alias</span>
+          <strong id="reg-transfer-alias" style="cursor:pointer;color:var(--sage-d);" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent).then(()=>showToast('Alias copiado ✓'))"></strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;">
+          <span style="color:var(--muted);">CBU</span>
+          <strong id="reg-transfer-cbu" style="font-size:11px;cursor:pointer;" onclick="navigator.clipboard&&navigator.clipboard.writeText(this.textContent).then(()=>showToast('CBU copiado ✓'))"></strong>
+        </div>
+      </div>
+      <label class="ll">Subir comprobante *</label>
+      <input type="file" id="reg-comprobante" accept="image/*,.pdf" style="width:100%;padding:10px;background:var(--bg);border:1.5px dashed var(--border);border-radius:8px;font-family:inherit;font-size:12px;margin-bottom:12px;box-sizing:border-box;">
+      <button id="reg-btn-transfer" onclick="registro_pagarTransfer()" class="lb">Enviar comprobante →</button>
+      <div id="reg-err3" style="display:none;font-size:12px;color:var(--err);margin-top:8px;"></div>
+      <button onclick="registro_renderStep(2)" class="btn btn-o" style="width:100%;margin-top:10px;">← Volver</button>
+    </div>
+  </div>
+</div>
+
+<!-- REGISTRO OK -->
+<div id="registro-ok-screen" class="fs-overlay" style="display:none;">
+  <div style="background:var(--warm);border-radius:20px;padding:32px;max-width:360px;width:90%;text-align:center;">
+    <div style="font-size:52px;margin-bottom:12px;">🎉</div>
+    <div style="font-size:22px;font-weight:400;margin-bottom:8px;">¡Bienvenida a SOMA!</div>
+    <div style="font-size:14px;color:var(--muted);margin-bottom:20px;" id="reg-ok-msg"></div>
+    <button onclick="registro_irAlPortal()" class="lb">Ver mi portal →</button>
+  </div>
+</div>
+
+<!-- PORTAL MAIN -->
+<div id="portal-screen" class="portal-wrap" style="display:none;">
+  <div class="portal-header">
+    <div>
+      <div style="font-size:20px;">SOMA Wellness</div>
+      <div style="font-size:11px;color:var(--muted);">Mi Portal</div>
+    </div>
+    <button onclick="portalLogout()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--muted);cursor:pointer;">Salir</button>
+  </div>
+  <div class="portal-body">
+    <div style="margin-bottom:20px;">
+      <div style="font-size:26px;font-weight:400;" id="portal-nombre"></div>
+      <div style="font-size:12px;color:var(--muted);" id="portal-sede"></div>
+    </div>
+    <div class="portal-card">
+      <div class="portal-card-title">MI PLAN</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><div style="font-size:11px;color:var(--muted);">Plan activo</div><div style="font-weight:600;font-size:15px;" id="portal-plan"></div></div>
+        <div><div style="font-size:11px;color:var(--muted);">Vencimiento</div><div style="font-size:14px;" id="portal-venc"></div></div>
+      </div>
+      <div style="margin-top:16px;" id="portal-creditos"></div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button onclick="portal_solicitarRenovacion()" style="flex:1;padding:10px;background:var(--sage-d);color:#fff;border:none;border-radius:10px;font-size:13px;font-family:inherit;cursor:pointer;">🔄 Renovar plan</button>
+        <button onclick="portal_abrirCambioPlan()" style="flex:1;padding:10px;background:var(--bg);border:1.5px solid var(--sage-l);border-radius:10px;font-size:13px;font-family:inherit;cursor:pointer;color:var(--sage-d);">↕ Cambiar plan</button>
+      </div>
+    </div>
+    <div class="portal-card">
+      <div class="portal-card-title">MIS HORARIOS</div>
+      <div id="portal-horarios" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+    <div class="portal-card">
+      <div class="portal-card-title">ASISTENCIA ESTA SEMANA</div>
+      <div id="portal-asistencia"></div>
+    </div>
+  </div>
+  <div id="portal-toast" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--char);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:9999;white-space:nowrap;"></div>
+</div>
+
+<!-- CAMBIAR TURNO -->
+<div class="ov" id="portal-cambio-ov" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:480px;max-height:80vh;display:flex;flex-direction:column;">
+    <div class="mhd"><div><div class="mt">Cambiar turno</div><div class="ms">Turno actual: <strong id="portal-cambio-actual"></strong></div></div>
+    <button class="cbtn" onclick="document.getElementById('portal-cambio-ov').classList.remove('open')">✕</button></div>
+    <div style="padding:8px 0;overflow-y:auto;flex:1;"><div id="portal-slots-list" style="display:flex;flex-direction:column;gap:4px;"></div></div>
+    <div class="mft">
+      <button class="btn btn-o" onclick="document.getElementById('portal-cambio-ov').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-p" id="portal-confirmar-cambio" disabled onclick="portal_confirmarCambio()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CAMBIAR PLAN -->
+<div class="ov" id="portal-cambio-plan-ov" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:380px;">
+    <div class="mhd"><div><div class="mt">Cambiar de plan</div><div class="ms">Tu solicitud será revisada por el equipo</div></div>
+    <button class="cbtn" onclick="document.getElementById('portal-cambio-plan-ov').classList.remove('open')">✕</button></div>
+    <div style="padding:12px 0;">
+      <label class="ll">Nuevo plan</label>
+      <select id="portal-nuevo-plan" class="fsel" style="width:100%;margin-top:4px;"></select>
+    </div>
+    <div class="mft">
+      <button class="btn btn-o" onclick="document.getElementById('portal-cambio-plan-ov').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-p" onclick="portal_confirmarCambioPlan()">Enviar solicitud</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.8.0/firebase-app-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.8.0/firebase-firestore-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.8.0/firebase-auth-compat.min.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD5E3_yor_lR7N41WjR1CtOzS3WjkQGE_4",
+  authDomain: "soma-wellness-8c891.firebaseapp.com",
+  projectId: "soma-wellness-8c891",
+  storageBucket: "soma-wellness-8c891.firebasestorage.app",
+  messagingSenderId: "544070415698",
+  appId: "1:544070415698:web:30506522898f020dbbf68b"
+};
+
+let db, auth, students=[], portalUser=null, portalStudent=null, registroData={};
+
+const CUPOS = {Amarras:6, Centro:10, Faro:9};
+const DAYS_S    = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+const MULTISEDE_EXTRA = 15000;
+const PLANES = {
+  "Clase suelta":   {monto:15000,  creditos:1,  dias:1},
+  "1 vez/semana":   {monto:40000,  creditos:4,  dias:1},
+  "2 veces/semana": {monto:70000,  creditos:8,  dias:2},
+  "3 veces/semana": {monto:80000,  creditos:12, dias:3},
+  "4 veces/semana": {monto:100000, creditos:16, dias:4},
+  "5 veces/semana": {monto:120000, creditos:20, dias:5},
+  "3 meses":        {monto:240000, creditos:36, dias:3},
+  "6 meses":        {monto:480000, creditos:72, dias:3},
+  "12 meses":       {monto:960000, creditos:144,dias:3}
+};
+const ACTIVIDADES_SEDE = {
+  Amarras: ['Pilates Reformer'],
+  Centro:  ['Pilates Reformer', 'Yoga', 'Streaching', 'Actividad Física Adaptada'],
+  Faro:    ['Pilates Reformer', 'Yoga', 'Streaching', 'Actividad Física Adaptada', 'Movimiento Activo']
+};
+const SEDE_HORARIOS = {
+  Amarras: {
+    'Pilates Reformer': {
+      'Lunes':    ['6:00','7:00','8:00','9:00','10:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'],
+      'Martes':   ['6:00','7:00','8:00','9:00','10:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'],
+      'Miércoles':['6:00','7:00','8:00','9:00','10:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'],
+      'Jueves':   ['6:00','7:00','8:00','9:00','10:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'],
+      'Viernes':  ['6:00','7:00','8:00','9:00','10:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'],
+      'Sábado':   ['9:00','10:00','11:00']
+    }
+  },
+  Centro: {
+    'Pilates Reformer': {
+      'Lunes':    ['6:00','7:00','8:00','9:00','16:00','17:00','18:00','19:00'],
+      'Martes':   ['6:00','7:00','8:00','9:00','16:00','17:00','18:00','19:00'],
+      'Miércoles':['6:00','7:00','8:00','9:00','16:00','17:00','18:00','19:00'],
+      'Jueves':   ['6:00','7:00','8:00','9:00','16:00','17:00','18:00','19:00'],
+      'Viernes':  ['6:00','7:00','8:00','9:00','16:00','17:00','18:00','19:00'],
+      'Sábado':   ['9:00','10:00','11:00']
+    },
+    'Yoga': {
+      'Lunes':    ['14:00','20:00'],
+      'Miércoles':['14:00','20:00'],
+      'Viernes':  ['14:00','20:00']
+    },
+    'Streaching': {
+      'Martes':   ['20:00'],
+      'Jueves':   ['20:00']
+    },
+    'Actividad Física Adaptada': {
+      'Martes':   ['10:00'],
+      'Jueves':   ['10:00']
+    }
+  },
+  Faro: {
+    'Pilates Reformer': {
+      'Lunes':    ['8:00','9:00','10:00','16:00','17:00','18:00','19:00'],
+      'Martes':   ['8:00','9:00','10:00','16:00','17:00','18:00','19:00'],
+      'Miércoles':['8:00','9:00','10:00','16:00','17:00','18:00','19:00'],
+      'Jueves':   ['8:00','9:00','10:00','16:00','17:00','18:00','19:00'],
+      'Viernes':  ['8:00','9:00','10:00','16:00','17:00','18:00','19:00']
+    },
+    'Yoga': {
+      'Lunes':    ['18:00'],
+      'Martes':   ['8:00'],
+      'Miércoles':['18:00'],
+      'Jueves':   ['8:00']
+    },
+    'Streaching': {
+      'Martes':   ['18:00'],
+      'Jueves':   ['18:00']
+    },
+    'Actividad Física Adaptada': {
+      'Lunes':    ['9:00'],
+      'Miércoles':['9:00'],
+      'Viernes':  ['9:00']
+    },
+    'Movimiento Activo': {
+      'Lunes':    ['8:00','16:00'],
+      'Miércoles':['8:00','16:00'],
+      'Viernes':  ['8:00','16:00']
+    }
+  }
+};
+const SEDE_PAGOS={
+  Amarras:{
+    alias:'SOMA.AMARRAS', cbu:'',
+    mp:{ publicKey:'', accessToken:'' }  // completar con credenciales de Amarras
+  },
+  Centro:{
+    alias:'SOMA.CENTRO', cbu:'0170418520000001437265',
+    mp:{ publicKey:'', accessToken:'' }  // completar con credenciales de Centro
+  },
+  Faro:{
+    alias:'SOMA.FARO', cbu:'',
+    mp:{ publicKey:'', accessToken:'' }  // completar con credenciales de Faro
+  }
+};
+const MP_PUBLIC_KEY='APP_USR-b886264d-9717-4165-8dfe-191ebd27d5a8';
+const MP_ACCESS_TOKEN='APP_USR-5597322383004977-061219-71774d872f72559363abbab42107f75b-162116748';
+
+// ── Helper functions ───────────────────────────────────────────
+function getCupo(sede){return CUPOS[sede]||6;}
+function getMPToken(sede){
+  const pagos=SEDE_PAGOS[sede];
+  return (pagos&&pagos.mp&&pagos.mp.accessToken)?pagos.mp.accessToken:MP_ACCESS_TOKEN;
+}
+function getSlotsForSedeActDia(sede, actividad, dia){
+  const sedeH = SEDE_HORARIOS[sede];
+  if(!sedeH) return dia==='Sábado'?SLOTS_SAB:SLOTS_WK;
+  const actH = sedeH[actividad];
+  if(!actH) return [];
+  return actH[dia] || [];
+}
+function getDiasForSedeAct(sede, actividad){
+  const sedeH = SEDE_HORARIOS[sede];
+  if(!sedeH) return DAYS_S;
+  const actH = sedeH[actividad];
+  if(!actH) return [];
+  return Object.keys(actH);
+}
+function getSlotStudentsByActividad(sede,dia,hora,actividad){
+  const dl = dia.toLowerCase().substring(0,3);
+  const h = hora.replace(':00','');
+  return students.filter(s=>{
+    if(s.sede==='Multisede'){
+      // Multisede students: check if they have this sede+dia+hora in their horarios
+      const hor = (s.horarios||'').toLowerCase();
+      const sMatch = hor.includes(sede.toLowerCase());
+      const dMatch = hor.includes(dl);
+      const hMatch = hor.includes(' '+h+'hs') || hor.startsWith(h+'hs');
+      const aMatch = (!s.actividad || s.actividad===actividad || actividad==='Pilates');
+      return sMatch && dMatch && hMatch && aMatch;
+    }
+    if(s.sede !== sede) return false;
+    const hor = (s.horarios||'').toLowerCase();
+    const dMatch = hor.includes(dl);
+    const hMatch = hor.includes(' '+h+'hs') || hor.startsWith(h+'hs');
+    const actMatch = !s.actividad || s.actividad===actividad || (actividad==='Pilates'&&!s.actividad);
+    return dMatch && hMatch && actMatch;
+  });
+}
+function calcVencimiento(s){if(!s.inicio)return null;const m=PLAN_DURACION_MESES[s.plan]||1;const d=new Date(s.inicio+'T12:00:00');d.setMonth(d.getMonth()+m);return d;}
+function diasHastaVenc(s){const v=calcVencimiento(s);if(!v)return null;const h=new Date();h.setHours(0,0,0,0);return Math.round((v-h)/86400000);}
+function fmtVenc(s){const v=calcVencimiento(s);if(!v)return '--';return v.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});}
+
+function showToast(msg, ico) {
+  const t=document.getElementById('portal-toast');
+  if(!t)return;
+  t.textContent=(ico||'✓')+' '+msg;
+  t.style.display='block';
+  setTimeout(()=>t.style.display='none',3000);
+}
+
+// ── Firebase init ──────────────────────────────────────────────
+async function initPortal(){
+  try{
+    firebase.initializeApp({
+  apiKey: "AIzaSyD5E3_yor_lR7N41WjR1CtOzS3WjkQGE_4",
+  authDomain: "soma-wellness-8c891.firebaseapp.com",
+  projectId: "soma-wellness-8c891",
+  storageBucket: "soma-wellness-8c891.firebasestorage.app",
+  messagingSenderId: "544070415698",
+  appId: "1:544070415698:web:30506522898f020dbbf68b"
+});
+    db   = firebase.firestore();
+    auth = firebase.auth();
+    auth.onAuthStateChanged(async(user)=>{
+      if(!user){ showLoginScreen(); return; }
+      portalUser=user;
+      // Load student record by email
+      try{
+        const snap=await db.collection('students').where('email','==',user.email).limit(1).get();
+        if(!snap.empty){
+          portalStudent={id:snap.docs[0].id,...snap.docs[0].data()};
+          showPortalScreen();
+          // Real-time updates
+          db.collection('students').doc(portalStudent.id).onSnapshot(doc=>{
+            if(doc.exists){portalStudent={id:doc.id,...doc.data()};renderPortal();}
+          });
+        } else {
+          // Auth user exists but no student record - start registro
+          document.getElementById('portal-login-screen')&&(document.getElementById('portal-login-screen').style.display='none');
+          document.getElementById('login-screen').style.display='none';
+          document.getElementById('registro-screen').style.display='flex';
+          registro_renderStep(1);
+          if(user.email) document.getElementById('reg-email').value=user.email;
+        }
+      }catch(e){ showLoginScreen(); }
+    });
+  }catch(e){
+    console.error('Firebase error:',e);
+    showLoginScreen();
+  }
+}
+
+function showLoginScreen(){
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('portal-screen').style.display='none';
+  document.getElementById('registro-screen').style.display='none';
+}
+function showPortalScreen(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('registro-screen').style.display='none';
+  document.getElementById('portal-screen').style.display='flex';
+  renderPortal();
+}
+
+// ── Auth ───────────────────────────────────────────────────────
+async function portalLoginEmail(){const email=document.getElementById('portal-email').value.trim();const pass=document.getElementById('portal-pass').value;const errEl=document.getElementById('portal-err');if(!email||!pass){errEl.textContent='Completa email y contrasena.';errEl.style.display='block';return;}try{await auth.signInWithEmailAndPassword(email,pass);}catch(e){errEl.textContent=e.code==='auth/user-not-found'||e.code==='auth/wrong-password'?'Email o contrasena incorrectos.':'Error: '+e.message;errEl.style.display='block';}}
+async function portalLoginGoogle(){try{const provider=new firebase.auth.GoogleAuthProvider();await auth.signInWithPopup(provider);}catch(e){console.log('Google error:',e);}}
+
+function portalLogout(){
+  if(auth)auth.signOut();
+  portalUser=null; portalStudent=null;
+  showLoginScreen();
+}
+
+// ── Portal ─────────────────────────────────────────────────────
+function renderPortal(){const s=portalStudent;if(!s)return;document.getElementById('portal-nombre').textContent=s.nombre+' '+s.apellido;document.getElementById('portal-sede').textContent=s.sede;document.getElementById('portal-plan').textContent=s.plan;const dias=diasHastaVenc(s);const vencEl=document.getElementById('portal-venc');if(vencEl){if(dias===null){vencEl.textContent='Sin fecha';}else if(dias<0){vencEl.innerHTML='<span style="color:var(--err);">Vencido hace '+Math.abs(dias)+' dias</span>';}else if(dias<=5){vencEl.innerHTML='<span style="color:var(--warn);">Vence en '+dias+' dia'+(dias!==1?'s':'')+'</span>';}else{vencEl.innerHTML='Vence el <strong>'+fmtVenc(s)+'</strong> ('+dias+' dias)';}}const p=PLANES[s.plan];const pct=p?Math.max(0,Math.min(100,(s.creditos/p.creditos)*100)):0;document.getElementById('portal-creditos').innerHTML='<div style="font-size:36px;font-weight:300;color:var(--sage-d);">'+s.creditos+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:8px;">creditos disponibles</div><div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:var(--sage);border-radius:4px;"></div></div>';const hors=(s.horarios||'').split(' / ').filter(Boolean);document.getElementById('portal-horarios').innerHTML=hors.length?hors.map(h=>'<div style="background:var(--cream);border-radius:8px;padding:8px 12px;font-size:13px;display:flex;justify-content:space-between;align-items:center;"><span>'+h+'</span><button data-h="'+h+'" onclick="portal_cambiarTurno(this.dataset.h)" style="background:none;border:1px solid var(--sage-l);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--sage-d);cursor:pointer;">Cambiar</button></div>').join(''):'<div style="color:var(--muted);font-size:13px;">Sin horarios asignados</div>';if(s.att){const days=['Lun','Mar','Mie','Jue','Vie','Sab'];const total=s.att.reduce((a,v)=>a+v,0);document.getElementById('portal-asistencia').innerHTML='<div style="display:flex;gap:6px;margin-bottom:8px;">'+days.map((d,i)=>'<div style="text-align:center;flex:1;"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">'+d+'</div><div style="width:100%;aspect-ratio:1;border-radius:6px;background:'+(s.att[i]?'var(--sage)':'var(--border)')+'"></div></div>').join('')+'</div><div style="font-size:12px;color:var(--muted);">'+total+' clase'+(total!==1?'s':'')+' esta semana</div>';}}
+function portal_cambiarTurno(h){portalCambioHorario=h;document.getElementById('portal-cambio-ov').classList.add('open');document.getElementById('portal-cambio-actual').textContent=h;portal_renderSlotsDisponibles();}
+function portal_renderSlotsDisponibles(){
+  const s=portalStudent;
+  const sedesActivas=s.sede==='Multisede'?['Amarras','Centro','Faro']:[s.sede];
+  const cont=document.getElementById('portal-slots-list');if(!cont)return;
+  let h2='';
+  sedesActivas.forEach(sede=>{
+    const cupo=getCupo(sede);
+    const acts=ACTIVIDADES_SEDE[sede]||['Pilates Reformer'];
+    if(sedesActivas.length>1)h2+='<div style="font-size:11px;font-weight:600;color:var(--sage-d);margin:10px 0 4px;">📍 '+sede+'</div>';
+    acts.forEach(act=>{
+      if(acts.length>1)h2+='<div style="font-size:10px;color:var(--muted);margin:4px 0 2px;padding-left:6px;">'+act+'</div>';
+      const dias=getDiasForSedeAct(sede,act);
+      dias.forEach(dia=>{
+        const slots=getSlotsForSedeActDia(sede,act,dia);
+        slots.forEach(hora=>{
+          const list=getSlotStudentsByActividad(sede,dia,hora,act);
+          const adj=list.find(x=>x.id===s.id)?list.length-1:list.length;
+          if(adj>=cupo)return;
+          const hh=hora.replace(':00','');
+          const label=dia+' '+hh+'hs'+(acts.length>1?' ('+act+')':'');
+          const key=sede+'|'+dia+'|'+hora+'|'+act;
+          h2+='<div onclick="portal_selSlot(this)" style="padding:8px 12px;border-radius:8px;background:var(--cream);cursor:pointer;font-size:13px;display:flex;justify-content:space-between;margin-bottom:4px;" data-key="'+key+'"><span>'+label+'</span><span style="color:var(--muted);font-size:11px;">'+adj+'/'+cupo+'</span></div>';
+        });
+      });
+    });
+  });
+  cont.innerHTML=h2||'<div style="color:var(--muted);text-align:center;padding:20px;">Sin turnos disponibles</div>';
+}
+function portal_selSlot(el){document.querySelectorAll('#portal-slots-list div[data-key]').forEach(d=>{d.style.border='none';d.style.background='var(--cream)';delete d.dataset.selected;});el.style.border='1.5px solid var(--sage-d)';el.style.background='rgba(77,122,77,.08)';el.dataset.selected='1';document.getElementById('portal-confirmar-cambio').disabled=false;}
+async function portal_confirmarCambio(){const sel=document.querySelector('#portal-slots-list div[data-selected="1"]');if(!sel||!portalCambioHorario)return;const parts=sel.dataset.key.split('|');const dia=parts[1],hora=parts[2];const hh=hora.replace(':00','');const nuevoSlot=dia+' '+hh+'hs';const s=portalStudent;const hors=(s.horarios||'').split(' / ');const idx=hors.findIndex(x=>x.includes(portalCambioHorario));const nh=idx>=0?hors.map((x,i)=>i===idx?nuevoSlot:x):[...hors,nuevoSlot];const newH=nh.filter(Boolean).join(' / ');try{if(!db)throw new Error('Sin conexion');await db.collection('students').doc(s.id).update({horarios:newH});portalStudent={...s,horarios:newH};document.getElementById('portal-cambio-ov').classList.remove('open');renderPortal();portal_toast('Turno actualizado');}catch(e){portal_toast('Error: '+e.message,'!');}}
+function portal_solicitarRenovacion(){portal_crearSolicitud('renovacion','El cliente '+portalStudent.nombre+' '+portalStudent.apellido+' solicita renovar su plan ('+portalStudent.plan+').',portalStudent.plan);}
+function portal_abrirCambioPlan(){document.getElementById('portal-cambio-plan-ov').classList.add('open');const sel=document.getElementById('portal-nuevo-plan');if(sel)sel.innerHTML=Object.keys(PLANES).map(k=>'<option value="'+k+'"'+(k===portalStudent.plan?' selected':'')+'>'+k+'</option>').join('');}
+async function portal_confirmarCambioPlan(){const sel=document.getElementById('portal-nuevo-plan');const nuevoPlan=sel?sel.value:'';if(!nuevoPlan)return;await portal_crearSolicitud('cambio_plan','El cliente '+portalStudent.nombre+' '+portalStudent.apellido+' solicita cambiar: '+portalStudent.plan+' a '+nuevoPlan+'.',nuevoPlan);document.getElementById('portal-cambio-plan-ov').classList.remove('open');portal_toast('Solicitud enviada');}
+async function portal_crearSolicitud(tipo,mensaje,data){const s=portalStudent;try{if(!db)throw new Error('Sin conexion');await db.collection('solicitudes').add({tipo,mensaje,data,clienteId:s.id,clienteNombre:s.nombre+' '+s.apellido,sede:s.sede,estado:'pendiente',createdAt:new Date().toISOString()});portal_toast('Solicitud enviada');}catch(e){portal_toast('Error: '+e.message,'!');}}
+function portal_toast(msg,ico){const t=document.getElementById('portal-toast');if(!t)return;t.textContent=(ico||'ok')+' '+msg;t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+
+// ── Registro ───────────────────────────────────────────────────
+function showRegistro(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('registro-screen').style.display='flex';
+  registro_renderStep(1);
+}
+function hideRegistro(){
+  document.getElementById('registro-screen').style.display='none';
+  showLoginScreen();
+  registroData={};
+}
+function registro_renderStep(step){
+  document.getElementById('registro-step').textContent='Paso '+step+' de 3';
+  document.getElementById('registro-step1').style.display=step===1?'block':'none';
+  document.getElementById('registro-step2').style.display=step===2?'block':'none';
+  const s3=document.getElementById('registro-step3');if(s3)s3.style.display=step===3?'block':'none';
+  document.getElementById('registro-progress').style.width=(step===1?33:step===2?66:100)+'%';
+}
+function registro_step1_next(){
+  const n=document.getElementById('reg-nombre').value.trim(),a=document.getElementById('reg-apellido').value.trim(),e=document.getElementById('reg-email').value.trim(),p=document.getElementById('reg-pass').value,err=document.getElementById('reg-err1');
+  if(!n||!a||!e||!p){err.textContent='Completá nombre, apellido, email y contraseña.';err.style.display='block';return;}
+  if(p.length<6){err.textContent='Mínimo 6 caracteres.';err.style.display='block';return;}
+  err.style.display='none';
+  registroData={nombre:n,apellido:a,dni:document.getElementById('reg-dni').value.trim(),telefono:document.getElementById('reg-tel').value.trim(),email:e,pass:p};
+  registro_renderStep(2);
+  registro_renderPlanCards();
+}
+function registro_selSede(el){
+  document.querySelectorAll('.reg-sede-card').forEach(c=>{
+    c.style.border='2px solid var(--border)';c.style.background='';
+  });
+  el.style.border='2px solid var(--sage-d)';
+  el.style.background='rgba(77,122,77,.08)';
+  const sede = el.dataset.sede;
+  registroData.sede = sede;
+  registroData.isMulti = (sede === 'Multisede');
+  // Show/hide multisede checkbox (hide since it's now a card itself)
+  const multiOpt = document.getElementById('reg-multisede-opt');
+  if(multiOpt) multiOpt.style.display = 'none';
+  registro_renderPlanCards();
+}
+function registro_toggleMultisede(){
+  registroData.isMulti=document.getElementById('reg-multisede-check').checked;
+  registro_renderPlanCards();
+}
+function registro_renderPlanCards(){
+  const cont=document.getElementById('reg-plan-cards');if(!cont)return;
+  const isMulti=registroData.isMulti||false;const selPlan=registroData.plan||'';
+  cont.innerHTML=Object.entries(PLANES).map(([k,p])=>{
+    const monto=isMulti?p.monto+MULTISEDE_EXTRA:p.monto;const isSel=selPlan===k;
+    return '<div class="reg-plan-card" data-plan="'+k+'" onclick="registro_selPlan(this)"'
+      +' style="border:2px solid '+(isSel?'var(--sage-d)':'var(--border)')+';border-radius:12px;padding:12px 14px;'
+      +'cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:'+(isSel?'rgba(77,122,77,.08)':'')+';margin-bottom:0;">'
+      +'<div><div style="font-size:13px;font-weight:600;">'+k+'</div><div style="font-size:11px;color:var(--muted);">'+p.creditos+' créditos/mes</div></div>'
+      +'<div style="font-size:15px;font-weight:700;color:var(--sage-d);">$'+Number(monto).toLocaleString('es-AR')+'</div>'
+      +'</div>';
+  }).join('');
+}
+function registro_selPlan(el){
+  document.querySelectorAll('.reg-plan-card').forEach(c=>{c.style.border='2px solid var(--border)';c.style.background='';});
+  el.style.border='2px solid var(--sage-d)';el.style.background='rgba(77,122,77,.08)';
+  registroData.plan=el.dataset.plan;
+}
+function registro_step2_next(){
+  const err=document.getElementById('reg-err2');
+  if(!registroData.sede){err.textContent='Seleccioná una sede.';err.style.display='block';return;}
+  if(!registroData.plan){err.textContent='Seleccioná un plan.';err.style.display='block';return;}
+  err.style.display='none';
+  const p=PLANES[registroData.plan];const isMulti=registroData.isMulti||false;
+  registroData.monto=p?(isMulti?p.monto+MULTISEDE_EXTRA:p.monto):0;
+  if(registroData.sede==='Multisede'){
+    registroData.isMulti=true;
+    registroData.sedeReal='Multisede';
+  } else {
+    registroData.sedeReal=registroData.sede;
+    if(isMulti)registroData.sede='Multisede';
+  }
+  registro_renderStep(3);
+  registro_renderPago();
+}
+function registro_renderPago(){
+  const sedeKey = registroData.sedeReal || registroData.sede;
+  const pagos = SEDE_PAGOS[sedeKey] || SEDE_PAGOS['Centro'];
+  const sede_el = document.getElementById('reg-pago-sede');
+  const plan_el = document.getElementById('reg-pago-plan');
+  const monto_el = document.getElementById('reg-pago-monto');
+  const alias_el = document.getElementById('reg-transfer-alias');
+  const cbu_el   = document.getElementById('reg-transfer-cbu');
+  if(sede_el)  sede_el.textContent  = registroData.sede;
+  if(plan_el)  plan_el.textContent  = registroData.plan;
+  if(monto_el) monto_el.textContent = '$'+Number(registroData.monto).toLocaleString('es-AR');
+  if(alias_el) alias_el.textContent = pagos.alias || '—';
+  if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
+}
+async function registro_pagarTransfer(){const compEl=document.getElementById('reg-comprobante'),err=document.getElementById('reg-err3');if(!compEl.files.length){err.textContent='Subi el comprobante.';err.style.display='block';return;}registroData.comprobante=compEl.files[0].name;await registro_completar('Transferencia',null,true);}
+async function registro_crearCuenta(){
+  const btn=document.querySelector('#registro-step2 button.lb');if(btn){btn.textContent='Creando...';btn.disabled=true;}
+  const err=document.getElementById('reg-err2');
+  try{
+    let uc;try{uc=await auth.createUserWithEmailAndPassword(registroData.email,registroData.pass);}
+    catch(e){if(e.code==='auth/email-already-in-use'){uc=await auth.signInWithEmailAndPassword(registroData.email,registroData.pass);}else if(e.code==='auth/configuration-not-found'){throw new Error('Firebase Auth no está habilitado. Activalo en Firebase Console → Authentication → Sign-in method.');}else throw e;}
+    const p=PLANES[registroData.plan];
+    const ns={nombre:registroData.nombre,apellido:registroData.apellido,dni:registroData.dni||'',telefono:registroData.telefono||'',email:registroData.email,sede:registroData.sede,plan:registroData.plan,monto:p?p.monto:registroData.monto,creditos:p?p.creditos:0,metodo:'Sin especificar',ep:'Pendiente',inicio:new Date().toISOString().split('T')[0],horarios:'',lesiones:'',descuento:'',actividad:'',att:[0,0,0,0,0,0]};
+    const docRef=await db.collection('students').add(ns);
+    portalStudent={...ns,id:docRef.id};
+    document.getElementById('registro-screen').style.display='none';
+    document.getElementById('registro-ok-screen').style.display='flex';
+    document.getElementById('reg-ok-msg').textContent='Tu cuenta fue creada. Cuando realices el pago te activamos el plan. Mientras tanto podés explorar tu portal.';
+  }catch(e){
+    if(btn){btn.textContent='Crear mi cuenta →';btn.disabled=false;}
+    err.textContent='Error: '+e.message;err.style.display='block';
+  }
+}
+async function registro_completar(metodo,txId,pendingTransfer){if(pendingTransfer===undefined)pendingTransfer=false;const p=PLANES[registroData.plan];const err=document.getElementById('reg-err3');try{let uc;try{uc=await auth.createUserWithEmailAndPassword(registroData.email,registroData.pass);}catch(e){if(e.code==='auth/email-already-in-use'){uc=await auth.signInWithEmailAndPassword(registroData.email,registroData.pass);}else if(e.code==='auth/configuration-not-found'){throw new Error('Firebase Auth no está habilitado. Activalo en Firebase Console → Authentication → Sign-in method.');}else throw e;}const ep=pendingTransfer?'Pendiente':'Al dia';const ns={nombre:registroData.nombre,apellido:registroData.apellido,dni:registroData.dni||'',telefono:registroData.telefono||'',email:registroData.email,sede:registroData.sede,plan:registroData.plan,monto:p?p.monto:registroData.monto,creditos:p?p.creditos:0,metodo,ep,inicio:new Date().toISOString().split('T')[0],horarios:'',lesiones:'',descuento:'',actividad:'',att:[0,0,0,0,0,0],txId:txId||'',comprobante:registroData.comprobante||''};const docRef=await db.collection('students').add(ns);if(pendingTransfer){await db.collection('solicitudes').add({tipo:'confirmar_pago',mensaje:registroData.nombre+' '+registroData.apellido+' pago por transferencia. Pendiente confirmacion.',data:registroData.plan,clienteId:docRef.id,clienteNombre:registroData.nombre+' '+registroData.apellido,sede:registroData.sede,estado:'pendiente',createdAt:new Date().toISOString()});}document.getElementById('registro-screen').style.display='none';document.getElementById('registro-ok-screen').style.display='flex';document.getElementById('reg-ok-msg').textContent=pendingTransfer?'Comprobante recibido. Te confirmamos el acceso en las proximas horas.':'Pago aprobado. Ya podes acceder a tu portal.';if(!pendingTransfer){setTimeout(async()=>{portalStudent={...ns,id:docRef.id};document.getElementById('registro-ok-screen').style.display='none';showPortal();},2000);}}catch(e){const btn=document.getElementById('reg-btn-pagar');if(btn){btn.disabled=false;btn.textContent='Reintentar';}err.textContent='Error: '+e.message;err.style.display='block';}}
+function registro_irAlPortal(){
+  document.getElementById('registro-ok-screen').style.display='none';
+  if(portalStudent){showPortal();}else{showPortalLogin();}
+}
+
+window.addEventListener('load', initPortal);
+</script>
+</body>
+</html>
