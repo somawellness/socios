@@ -297,6 +297,15 @@
       <div style="font-size:12px;color:var(--muted);margin-top:4px;" id="portal-sede"></div>
     </div>
 
+    <!-- Greeting + quick actions -->
+    <div style="padding:8px 0 20px;display:flex;justify-content:space-between;align-items:flex-end;">
+      <div>
+        <div style="font-family:var(--serif);font-size:36px;font-weight:300;line-height:1.1;" id="portal-nombre"></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;" id="portal-sede"></div>
+      </div>
+      <button onclick="portal_verFicha()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:12px;color:var(--muted);cursor:pointer;font-family:var(--sans);">Mi ficha</button>
+    </div>
+
     <!-- Plan card -->
     <div class="soma-card">
       <div class="card-label">Mi plan</div>
@@ -311,9 +320,19 @@
         </div>
       </div>
       <div class="cred-bar" style="margin-top:16px;"><div class="cred-fill" id="cred-fill" style="width:0%"></div></div>
-      <div style="display:flex;gap:8px;margin-top:16px;">
-        <button class="btn-soma btn-sm" onclick="portal_solicitarRenovacion()">Renovar plan</button>
-        <button class="btn-outline-green btn-sm" onclick="portal_abrirCambioPlan()">Cambiar plan</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;font-size:12px;">
+        <div style="background:var(--bg);border-radius:8px;padding:10px 12px;">
+          <div style="color:var(--muted);margin-bottom:2px;">Próxima renovación</div>
+          <div style="font-weight:500;" id="portal-renovacion">—</div>
+        </div>
+        <div style="background:var(--bg);border-radius:8px;padding:10px 12px;">
+          <div style="color:var(--muted);margin-bottom:2px;">Créditos usados</div>
+          <div style="font-weight:500;" id="portal-cred-used">—</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn-soma btn-sm" onclick="portal_solicitarRenovacion()">🔄 Renovar</button>
+        <button class="btn-outline-green btn-sm" onclick="portal_abrirCambioPlan()">↕ Cambiar plan</button>
       </div>
     </div>
 
@@ -325,8 +344,16 @@
 
     <!-- Asistencia card -->
     <div class="soma-card">
-      <div class="card-label">Asistencia esta semana</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div class="card-label" style="margin-bottom:0;">Asistencia esta semana</div>
+        <span class="link-text" onclick="portal_verAsistencia()" style="font-size:11px;">Ver historial</span>
+      </div>
       <div id="portal-asistencia"></div>
+    </div>
+
+    <!-- Footer link to web -->
+    <div style="text-align:center;padding:20px 0 8px;">
+      <a href="https://www.somawellness.com.ar" target="_blank" style="font-size:11px;color:var(--muted);text-decoration:none;letter-spacing:.5px;">somawellness.com.ar</a>
     </div>
   </div>
 
@@ -605,7 +632,7 @@ async function portalLoginEmail(){
   const emailEl = document.getElementById('portal-email');
   const passEl  = document.getElementById('portal-pass');
   const errEl   = document.getElementById('portal-err');
-  const btn     = document.querySelector('#login-screen button.lb');
+  const btn     = document.getElementById('btn-login');
 
   const email = emailEl ? emailEl.value.trim() : '';
   const pass  = passEl  ? passEl.value : '';
@@ -619,7 +646,7 @@ async function portalLoginEmail(){
     return;
   }
 
-  if(btn){ btn.textContent='Ingresando...'; btn.disabled=true; }
+  if(btn){ btn.textContent='Ingresando...'; btn.disabled=true; btn.style.opacity='.7'; }
   if(errEl) errEl.style.display='none';
 
   try{
@@ -633,7 +660,7 @@ async function portalLoginEmail(){
       : 'Error: '+e.message;
     if(errEl){ errEl.textContent=msg; errEl.style.display='block'; }
   } finally {
-    if(btn){ btn.textContent='Ingresar'; btn.disabled=false; }
+    if(btn){ btn.textContent='Ingresar'; btn.disabled=false; btn.style.opacity=''; }
   }
 }
 async function portalLoginGoogle(){
@@ -678,6 +705,11 @@ function renderPortal(){
   const credFill=document.getElementById('cred-fill');
   if(credNum) credNum.textContent=s.creditos;
   if(credFill) credFill.style.width=pct+'%';
+  // Renovacion / cred used
+  const renovEl=document.getElementById('portal-renovacion');
+  if(renovEl) renovEl.textContent=fmtVenc(s);
+  const credUsedEl=document.getElementById('portal-cred-used');
+  if(credUsedEl&&p) credUsedEl.textContent=(p.creditos-s.creditos)+' / '+p.creditos;
   // Horarios
   const hors=(s.horarios||'').split(' / ').filter(Boolean);
   const horEl=document.getElementById('portal-horarios');
@@ -692,7 +724,7 @@ function renderPortal(){
     attEl.innerHTML='<div class="week-grid">'+days.map((d,i)=>'<div class="week-day"><div class="week-lbl">'+d+'</div><div class="week-dot '+(s.att[i]?'att':'no')+'"></div></div>').join('')+'</div><div style="font-size:12px;color:var(--muted);margin-top:10px;">'+total+' clase'+(total!==1?'s':'')+' esta semana</div>';
   }
 }
-function portal_cambiarTurno(h){portalCambioHorario=h;document.getElementById('portal-cambio-ov').classList.add('open');document.getElementById('portal-cambio-actual').textContent=h;portal_renderSlotsDisponibles();}
+
 function portal_renderSlotsDisponibles(){
   const s=portalStudent;
   const sedesActivas=s.sede==='Multisede'?['Amarras','Centro','Faro']:[s.sede];
@@ -721,13 +753,13 @@ function portal_renderSlotsDisponibles(){
   });
   cont.innerHTML=h2||'<div style="color:var(--muted);text-align:center;padding:20px;">Sin turnos disponibles</div>';
 }
-function portal_selSlot(el){document.querySelectorAll('#portal-slots-list div[data-key]').forEach(d=>{d.style.border='none';d.style.background='var(--cream)';delete d.dataset.selected;});el.style.border='1.5px solid var(--sage-d)';el.style.background='rgba(77,122,77,.08)';el.dataset.selected='1';document.getElementById('portal-confirmar-cambio').disabled=false;}
-async function portal_confirmarCambio(){const sel=document.querySelector('#portal-slots-list div[data-selected="1"]');if(!sel||!portalCambioHorario)return;const parts=sel.dataset.key.split('|');const dia=parts[1],hora=parts[2];const hh=hora.replace(':00','');const nuevoSlot=dia+' '+hh+'hs';const s=portalStudent;const hors=(s.horarios||'').split(' / ');const idx=hors.findIndex(x=>x.includes(portalCambioHorario));const nh=idx>=0?hors.map((x,i)=>i===idx?nuevoSlot:x):[...hors,nuevoSlot];const newH=nh.filter(Boolean).join(' / ');try{if(!db)throw new Error('Sin conexion');await db.collection('students').doc(s.id).update({horarios:newH});portalStudent={...s,horarios:newH};document.getElementById('portal-cambio-ov').classList.remove('open');renderPortal();portal_toast('Turno actualizado');}catch(e){portal_toast('Error: '+e.message,'!');}}
+function portal_selSlot(el){document.querySelectorAll('#portal-slots-list div[data-key]').forEach(d=>{d.classList.remove('slot-sel');d.style.border='none';d.style.background='';delete d.dataset.selected;});el.style.border='1.5px solid var(--sage-d)';el.style.background='rgba(77,122,77,.08)';el.dataset.selected='1';document.getElementById('portal-confirmar-cambio').disabled=false;}
+
 async function portal_solicitarRenovacion(){portal_crearSolicitud('renovacion','El cliente '+portalStudent.nombre+' '+portalStudent.apellido+' solicita renovar su plan ('+portalStudent.plan+').',portalStudent.plan);}
 function portal_abrirCambioPlan(){document.getElementById('portal-cambio-plan-ov').classList.add('open');const sel=document.getElementById('portal-nuevo-plan');if(sel)sel.innerHTML=Object.keys(PLANES).map(k=>'<option value="'+k+'"'+(k===portalStudent.plan?' selected':'')+'>'+k+'</option>').join('');}
 async function portal_confirmarCambioPlan(){const sel=document.getElementById('portal-nuevo-plan');const nuevoPlan=sel?sel.value:'';if(!nuevoPlan)return;await portal_crearSolicitud('cambio_plan','El cliente '+portalStudent.nombre+' '+portalStudent.apellido+' solicita cambiar: '+portalStudent.plan+' a '+nuevoPlan+'.',nuevoPlan);document.getElementById('portal-cambio-plan-ov').classList.remove('open');portal_toast('Solicitud enviada');}
 async function portal_crearSolicitud(tipo,mensaje,data){const s=portalStudent;try{if(!db)throw new Error('Sin conexion');await db.collection('solicitudes').add({tipo,mensaje,data,clienteId:s.id,clienteNombre:s.nombre+' '+s.apellido,sede:s.sede,estado:'pendiente',createdAt:new Date().toISOString()});portal_toast('Solicitud enviada');}catch(e){portal_toast('Error: '+e.message,'!');}}
-function portal_toast(msg,ico){showToast(msg,ico);}
+function portal_toast(msg,ico){showToast(ico?ico+' '+msg:msg);}
 
 // ── Registro ───────────────────────────────────────────────────
 
@@ -1058,7 +1090,126 @@ async function portalRecuperarPassword(){
   }
 }
 
+
+// ── Ver ficha propia / editar datos ──────────────────────────────────────
+function portal_verFicha(){
+  const s = portalStudent; if(!s) return;
+  document.getElementById('ficha-nombre').textContent  = s.nombre+' '+s.apellido;
+  document.getElementById('ficha-dni').textContent     = s.dni||'—';
+  document.getElementById('ficha-tel').textContent     = s.telefono||'—';
+  document.getElementById('ficha-email').textContent   = s.email||'—';
+  document.getElementById('ficha-sede').textContent    = s.sede||'—';
+  document.getElementById('ficha-inicio').textContent  = s.inicio||'—';
+  document.getElementById('ficha-metodo').textContent  = s.metodo||'—';
+  document.getElementById('ficha-lesiones').textContent= s.lesiones||'Sin observaciones';
+  document.getElementById('portal-ficha-ov').classList.add('open');
+}
+
+function portal_editarDatos(){
+  const s = portalStudent; if(!s) return;
+  document.getElementById('edit-nombre').value   = s.nombre||'';
+  document.getElementById('edit-apellido').value = s.apellido||'';
+  document.getElementById('edit-tel').value      = s.telefono||'';
+  document.getElementById('edit-lesiones').value = s.lesiones||'';
+  document.getElementById('portal-ficha-ov').classList.remove('open');
+  document.getElementById('portal-editar-ov').classList.add('open');
+}
+
+async function portal_guardarDatos(){
+  const s = portalStudent; if(!s||!db) return;
+  const btn = document.getElementById('btn-guardar-datos');
+  btn.textContent='Guardando...'; btn.disabled=true;
+  try{
+    const upd = {
+      nombre:    document.getElementById('edit-nombre').value.trim(),
+      apellido:  document.getElementById('edit-apellido').value.trim(),
+      telefono:  document.getElementById('edit-tel').value.trim(),
+      lesiones:  document.getElementById('edit-lesiones').value.trim()
+    };
+    await db.collection('students').doc(s.id).update(upd);
+    portalStudent = {...s,...upd};
+    document.getElementById('portal-editar-ov').classList.remove('open');
+    renderPortal();
+    showToast('Datos actualizados ✓');
+  }catch(e){ showToast('Error: '+e.message,'⚠'); }
+  finally{ btn.textContent='Guardar'; btn.disabled=false; }
+}
+
+// ── Ver asistencia completa ───────────────────────────────────────────────
+function portal_verAsistencia(){
+  const s = portalStudent; if(!s) return;
+  const ov = document.getElementById('portal-asist-ov');
+  // Build last 8 weeks visual (use att array as this week)
+  const days=['Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const att = s.att||[0,0,0,0,0,0];
+  const total = att.reduce((a,v)=>a+v,0);
+  let h = '<div style="margin-bottom:16px;"><div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Esta semana</div>';
+  const dotColor = (v) => v ? 'var(--sage)' : 'var(--border)';
+  h += '<div style="display:flex;gap:8px;">'+days.map(function(d,i){ return '<div style="text-align:center;flex:1;"><div style="font-size:10px;color:var(--muted);">'+d+'</div><div style="width:100%;aspect-ratio:1;border-radius:6px;background:'+dotColor(att[i])+';margin-top:4px;"></div></div>'; }).join('')+'</div>';
+  h += '<div style="font-size:12px;color:var(--muted);margin-top:10px;">'+total+' clase'+(total!==1?'s':'')+' registradas</div></div>';
+  h += '<div style="font-size:12px;color:var(--muted);padding:12px;background:var(--bg);border-radius:8px;text-align:center;">El historial completo de asistencias está siendo implementado.</div>';
+  document.getElementById('portal-asist-cont').innerHTML = h;
+  ov.classList.add('open');
+}
+
+// ── Cambiar turno: por única vez o definitivo ─────────────────────────────
+let _cambioTipoUnico = false;
+
+function portal_cambiarTurno(horActual){
+  portalCambioHorario = horActual;
+  document.getElementById('portal-cambio-actual').textContent = horActual;
+  document.getElementById('cambio-tipo-unico').checked   = false;
+  document.getElementById('cambio-tipo-fijo').checked    = true;
+  _cambioTipoUnico = false;
+  portal_renderSlotsDisponibles();
+  document.getElementById('portal-cambio-ov').classList.add('open');
+}
+
+function portal_setCambioTipo(unico){
+  _cambioTipoUnico = unico;
+}
+
+// Override portal_confirmarCambio to handle tipo
+async function portal_confirmarCambio(){
+  const sel = document.querySelector('#portal-slots-list .slot-sel');
+  if(!sel||!portalCambioHorario) return;
+  const parts = sel.dataset.key.split('|');
+  const dia=parts[1], hora=parts[2];
+  const hh = hora.replace(':00','');
+  const nuevoSlot = dia+' '+hh+'hs';
+  const s = portalStudent;
+
+  if(_cambioTipoUnico){
+    // Solicitar cambio por única vez al admin
+    await portal_crearSolicitud(
+      'cambio_turno_unico',
+      s.nombre+' '+s.apellido+' solicita cambiar el turno '+portalCambioHorario+' por '+nuevoSlot+' (por única vez).',
+      nuevoSlot
+    );
+    document.getElementById('portal-cambio-ov').classList.remove('open');
+    showToast('Solicitud enviada ✓');
+  } else {
+    // Cambio definitivo - actualizar directamente si hay cupo
+    const hors = (s.horarios||'').split(' / ');
+    const idx2  = hors.findIndex(x=>x.includes(portalCambioHorario));
+    const nh   = idx2>=0 ? hors.map((x,i)=>i===idx2?nuevoSlot:x) : [...hors,nuevoSlot];
+    const newH = nh.filter(Boolean).join(' / ');
+    try{
+      if(!db) throw new Error('Sin conexión');
+      await db.collection('students').doc(s.id).update({horarios:newH});
+      portalStudent = {...s, horarios:newH};
+      document.getElementById('portal-cambio-ov').classList.remove('open');
+      renderPortal();
+      showToast('Turno actualizado definitivamente ✓');
+    }catch(e){ showToast('Error: '+e.message,'⚠'); }
+  }
+}
+
 window.addEventListener('load', initPortal);
+
+
+
+
 
 
 
