@@ -589,23 +589,28 @@ async function initPortal(){
       portalUser=user;
       // Load student record by email
       try{
+        // Show loading state while fetching
+        document.getElementById('portal-screen').style.display='none';
         const snap=await db.collection('students').where('email','==',user.email).limit(1).get();
         if(!snap.empty){
           portalStudent={id:snap.docs[0].id,...snap.docs[0].data()};
+          document.getElementById('auth-screen').style.display='none';
           showPortalScreen();
           // Real-time updates
           db.collection('students').doc(portalStudent.id).onSnapshot(doc=>{
             if(doc.exists){portalStudent={id:doc.id,...doc.data()};renderPortal();}
           });
         } else {
-          // Auth user exists but no student record - start registro
-          document.getElementById('portal-login-screen')&&(document.getElementById('portal-login-screen').style.display='none');
-          document.getElementById('login-screen').style.display='none';
-          document.getElementById('registro-screen').style.display='flex';
+          // Auth user exists but no student record - go to registro
+          showLoginScreen();
+          showView('registro');
           registro_renderStep(1);
-          if(user.email) document.getElementById('reg-email').value=user.email;
+          if(user.email){
+            const el = document.getElementById('reg-email');
+            if(el) el.value = user.email;
+          }
         }
-      }catch(e){ showLoginScreen(); }
+      }catch(e){ console.error('Portal load error:',e); showLoginScreen(); const errEl=document.getElementById('portal-err'); if(errEl){errEl.textContent='Error cargando tu cuenta: '+e.message; errEl.style.display='block';} }
     });
   }catch(e){
     console.error('Firebase error:',e);
@@ -1206,6 +1211,7 @@ async function portal_confirmarCambio(){
 }
 
 window.addEventListener('load', initPortal);
+
 
 
 
