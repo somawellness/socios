@@ -406,6 +406,18 @@ let db, auth, students=[], portalUser=null, portalStudent=null, registroData={};
 
 const CUPOS = {Amarras:6, Centro:10, Faro:9};
 const DAYS_S    = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+
+const PLAN_DURACION_MESES = {
+  'Clase suelta':     1,
+  '1 vez/semana':     1,
+  '2 veces/semana':   1,
+  '3 veces/semana':   1,
+  '4 veces/semana':   1,
+  '5 veces/semana':   1,
+  '3 meses':          3,
+  '6 meses':          6,
+  '12 meses':        12
+};
 const MULTISEDE_EXTRA = 15000;
 const PLANES = {
   "Clase suelta":   {monto:15000,  creditos:1,  dias:1},
@@ -1211,6 +1223,7 @@ async function portal_confirmarCambio(){
 }
 
 window.addEventListener('load', initPortal);
+
 
 
 
