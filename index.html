@@ -793,32 +793,129 @@ function portal_cambiarTurno(horActual){
 function portal_setCambioTipo(unico){_cambioTipoUnico=unico;}
 
 function portal_renderSlotsDisponibles(){
-  const s=portalStudent;if(!s)return;
-  const sedesA=s.sede==='Multisede'?['Amarras','Centro','Faro']:[s.sede];
-  const cont=document.getElementById('portal-slots-list');if(!cont)return;
-  let h='';
-  sedesA.forEach(sede=>{
-    const cupo=getCupo(sede);
-    const acts=ACTIVIDADES_SEDE[sede]||['Pilates Reformer'];
-    if(sedesA.length>1)h+='<div style="font-size:11px;font-weight:600;color:var(--sage-d);margin:10px 0 4px;">'+sede+'</div>';
-    acts.forEach(act=>{
-      if(acts.length>1)h+='<div style="font-size:10px;color:var(--muted);padding:4px 0 2px;">'+act+'</div>';
-      const dias=getDiasForSedeAct(sede,act);
-      dias.forEach(dia=>{
-        const slots=getSlotsForSedeActDia(sede,act,dia);
-        slots.forEach(hora=>{
-          const list=getSlotStudentsByActividad(sede,dia,hora,act);
-          const adj=list.find(x=>x.id===s.id)?list.length-1:list.length;
-          if(adj>=cupo)return;
-          const hh=hora.replace(':00','');
-          const label=dia+' '+hh+'hs'+(acts.length>1?' ('+act+')':'');
-          const key=sede+'|'+dia+'|'+hora+'|'+act;
-          h+='<div onclick="portal_selSlot(this)" data-key="'+key+'" style="padding:8px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--border);cursor:pointer;font-size:13px;display:flex;justify-content:space-between;margin-bottom:4px;"><span>'+label+'</span><span style="font-size:11px;color:var(--muted);">'+adj+'/'+cupo+'</span></div>';
-        });
-      });
-    });
+  const s = portalStudent; if(!s) return;
+  const cont = document.getElementById('portal-slots-list'); if(!cont) return;
+  const isMulti = s.sede==='Multisede';
+  const sedesA  = isMulti ? ['Amarras','Centro','Faro'] : [s.sede];
+
+  // Build dropdown row(s) - one per sede if multisede, else one row
+  let h = '<div style="display:flex;flex-direction:column;gap:10px;">';
+
+  sedesA.forEach(function(sede, si){
+    const acts = ACTIVIDADES_SEDE[sede] || ['Pilates Reformer'];
+    const showSede = isMulti;
+    const showAct  = acts.length > 1;
+    const rowId    = 'portal-slot-row-' + si;
+
+    // Grid columns
+    let cols = showSede && showAct ? '1fr 1fr 1fr 1fr'
+             : showAct             ? '1fr 1fr 1fr'
+             :                       '1fr 1fr';
+
+    h += '<div style="display:grid;grid-template-columns:'+cols+';gap:8px;" id="'+rowId+'">';
+
+    // Sede label (multisede only)
+    if(showSede){
+      h += '<div style="font-size:12px;font-weight:600;color:var(--sage-d);display:flex;align-items:center;">'+sede+'</div>';
+    }
+
+    // Actividad
+    if(showAct){
+    h += '<select class="fsel" style="font-size:12px;" data-si="'+si+'" data-sede="'+sede+'" onchange="portalSlotActChange(this)" id="portal-slot-act-'+si+'">';
+      h += '<option value="">— Actividad —</option>';
+      acts.forEach(function(a){ h += '<option value="'+a+'">'+a+'</option>'; });
+      h += '</select>';
+    } else {
+      h += '<input type="hidden" id="portal-slot-act-'+si+'" value="'+acts[0]+'">';
+    }
+
+    // Día
+    const initialDias = !showAct ? getDiasForSedeAct(sede, acts[0]) : [];
+    h += '<select class="fsel" style="font-size:12px;" data-si="'+si+'" data-sede="'+sede+'" onchange="portalSlotDiaChange(this)" id="portal-slot-dia-'+si+'">';
+    h += '<option value="">— Día —</option>';
+    initialDias.forEach(function(d){ h += '<option value="'+d+'">'+d+'</option>'; });
+    h += '</select>';
+
+    // Horario
+    h += '<select class="fsel" style="font-size:12px;" onchange="portalSlotHoraChange('+si+')" id="portal-slot-hora-'+si+'">';
+    h += '<option value="">— Horario —</option>';
+    h += '</select>';
+
+    h += '</div>';
+
+    // Cupo info
+    h += '<div id="portal-slot-cupo-'+si+'" style="font-size:11px;color:var(--muted);margin-top:-4px;"></div>';
   });
-  cont.innerHTML=h||'<div style="color:var(--muted);text-align:center;padding:20px;">Sin turnos disponibles</div>';
+
+  h += '</div>';
+  cont.innerHTML = h;
+
+  // Reset confirm button
+  const btn = document.getElementById('portal-confirmar-cambio');
+  if(btn) btn.disabled = true;
+}
+
+function portalSlotActChange(el){ const si=parseInt(el.dataset.si); const sede=el.dataset.sede;
+  const actEl = document.getElementById('portal-slot-act-'+si);
+  const diaEl = document.getElementById('portal-slot-dia-'+si);
+  const horaEl= document.getElementById('portal-slot-hora-'+si);
+  const act   = actEl ? actEl.value : '';
+  if(diaEl && sede && act){
+    const dias = getDiasForSedeAct(sede, act);
+    diaEl.innerHTML = '<option value="">— Día —</option>' +
+      dias.map(function(d){ return '<option value="'+d+'">'+d+'</option>'; }).join('');
+  }
+  if(horaEl) horaEl.innerHTML = '<option value="">— Horario —</option>';
+  _portalUpdateCupo(si, sede);
+  const btn = document.getElementById('portal-confirmar-cambio');
+  if(btn) btn.disabled = true;
+}
+
+function portalSlotDiaChange(el){ const si=parseInt(el.dataset.si); const sede=el.dataset.sede;
+  const actEl  = document.getElementById('portal-slot-act-'+si);
+  const diaEl  = document.getElementById('portal-slot-dia-'+si);
+  const horaEl = document.getElementById('portal-slot-hora-'+si);
+  const act    = actEl  ? actEl.value  : '';
+  const dia    = diaEl  ? diaEl.value  : '';
+  if(horaEl && sede && act && dia){
+    const cupo   = getCupo(sede);
+    const slots  = getSlotsForSedeActDia(sede, act, dia);
+    horaEl.innerHTML = '<option value="">— Horario —</option>' +
+      slots.map(function(h){
+        const list = getSlotStudentsByActividad(sede, dia, h, act);
+        const s    = portalStudent;
+        const adj  = list.find(function(x){ return x.id===s.id; }) ? list.length-1 : list.length;
+        const full = adj >= cupo;
+        return '<option value="'+h+'"'+(full?' disabled':'')+'>'+h.replace(':00','')+'hs ('+adj+'/'+cupo+')'+(full?' — lleno':'')+'</option>';
+      }).join('');
+  }
+  _portalUpdateCupo(si, sede);
+  const btn = document.getElementById('portal-confirmar-cambio');
+  if(btn) btn.disabled = true;
+}
+
+function portalSlotHoraChange(si){
+  const btn = document.getElementById('portal-confirmar-cambio');
+  if(btn) btn.disabled = false;
+  _portalUpdateCupo(si, null);
+}
+
+function _portalUpdateCupo(si, sede){
+  const cupoEl = document.getElementById('portal-slot-cupo-'+si);
+  if(!cupoEl) return;
+  const actEl  = document.getElementById('portal-slot-act-'+si);
+  const diaEl  = document.getElementById('portal-slot-dia-'+si);
+  const horaEl = document.getElementById('portal-slot-hora-'+si);
+  const act    = actEl  ? actEl.value  : '';
+  const dia    = diaEl  ? diaEl.value  : '';
+  const hora   = horaEl ? horaEl.value : '';
+  if(!sede || !act || !dia || !hora){ cupoEl.textContent=''; return; }
+  const cupo = getCupo(sede);
+  const list = getSlotStudentsByActividad(sede, dia, hora, act);
+  const s    = portalStudent;
+  const adj  = list.find(function(x){ return x.id===s.id; }) ? list.length-1 : list.length;
+  cupoEl.textContent = adj+'/'+cupo+' lugares ocupados';
+  cupoEl.style.color = adj>=cupo ? 'var(--err)' : 'var(--muted)';
 }
 
 function portal_selSlot(el){
@@ -830,27 +927,52 @@ function portal_selSlot(el){
 }
 
 async function portal_confirmarCambio(){
-  const sel=document.querySelector('#portal-slots-list div[data-selected="1"]');
-  if(!sel||!portalCambioHorario)return;
-  const parts=sel.dataset.key.split('|');
-  const dia=parts[1],hora=parts[2];
-  const nuevoSlot=dia+' '+hora.replace(':00','')+'hs';
-  const s=portalStudent;
+  const s = portalStudent; if(!s) return;
+
+  // Read from first dropdown row (si=0 for single sede, or iterate for multisede)
+  const isMulti = s.sede==='Multisede';
+  const sedesA  = isMulti ? ['Amarras','Centro','Faro'] : [s.sede];
+
+  // Find first row that has a complete selection
+  let sede='', act='', dia='', hora='';
+  for(let si=0; si<sedesA.length; si++){
+    const actEl  = document.getElementById('portal-slot-act-'+si);
+    const diaEl  = document.getElementById('portal-slot-dia-'+si);
+    const horaEl = document.getElementById('portal-slot-hora-'+si);
+    const h = horaEl ? horaEl.value : '';
+    const d = diaEl  ? diaEl.value  : '';
+    const a = actEl  ? actEl.value  : '';
+    if(h && d){
+      sede = sedesA[si]; act = a; dia = d; hora = h; break;
+    }
+  }
+
+  if(!dia || !hora){ showToast('Seleccioná actividad, día y horario','⚠'); return; }
+
+  const nuevoSlot = dia+' '+hora.replace(':00','')+'hs';
+  const acts = ACTIVIDADES_SEDE[sede] || ['Pilates Reformer'];
+  const actPrefix = acts.length>1 && act ? act+': ' : '';
+  const sedePrefix = isMulti ? sede+' ' : '';
+  const nuevoLabel = sedePrefix + actPrefix + nuevoSlot;
+
   if(_cambioTipoUnico){
     await portal_crearSolicitud('cambio_turno_unico',
-      s.nombre+' '+s.apellido+' solicita cambiar el turno '+portalCambioHorario+' por '+nuevoSlot+' (por única vez).',nuevoSlot);
+      s.nombre+' '+s.apellido+' solicita cambiar el turno '+portalCambioHorario+' por '+nuevoLabel+' (por única vez).',
+      nuevoLabel);
     document.getElementById('portal-cambio-ov').classList.remove('open');
     showToast('Solicitud enviada ✓');
-  }else{
-    const hors=(s.horarios||'').split(' / ');
-    const idx2=hors.findIndex(x=>x===portalCambioHorario||x.includes(portalCambioHorario));
-    const nh=idx2>=0?hors.map((x,i)=>i===idx2?nuevoSlot:x):[...hors,nuevoSlot];
+  } else {
+    const hors = (s.horarios||'').split(' / ');
+    const idx3  = hors.findIndex(function(x){ return x===portalCambioHorario || x.includes(portalCambioHorario.split(' ')[0]); });
+    const nh   = idx3>=0 ? hors.map(function(x,i){ return i===idx3?nuevoLabel:x; }) : [...hors, nuevoLabel];
     try{
-      await db.collection('students').doc(s.id).update({horarios:nh.filter(Boolean).join(' / ')});
-      portalStudent={...s,horarios:nh.filter(Boolean).join(' / ')};
+      if(!db) throw new Error('Sin conexión');
+      await db.collection('students').doc(s.id).update({horarios: nh.filter(Boolean).join(' / ')});
+      portalStudent = {...s, horarios: nh.filter(Boolean).join(' / ')};
       document.getElementById('portal-cambio-ov').classList.remove('open');
-      renderPortal();showToast('Turno actualizado ✓');
-    }catch(e){showToast('Error: '+e.message,'⚠');}
+      renderPortal();
+      showToast('Turno actualizado ✓');
+    }catch(e){ showToast('Error: '+e.message,'⚠'); }
   }
 }
 
@@ -1230,6 +1352,8 @@ function registro_updatePlanes(){registro_renderPlanCards&&registro_renderPlanCa
 function registro_updateMonto(){}
 
 window.addEventListener('load', initPortal);
+
+
 
 
 
