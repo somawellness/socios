@@ -1048,7 +1048,8 @@ async function portal_confirmarCambioPlan(){
   const monto=p?(isMulti?p.monto+MULTISEDE_EXTRA:p.monto):0;
   const msg=s.nombre+' '+s.apellido+' solicita cambiar a plan: '+nuevoPlan+(isMulti?' (Multisede)':'')+
     ' ($'+Number(monto).toLocaleString('es-AR')+'). Comprobante: '+compEl.files[0].name;
-  await portal_crearSolicitud('cambio_plan',msg,nuevoPlan);
+  const b64cp = await readFileAsBase64(compEl.files[0]);
+  await portal_crearSolicitudConComprobante('cambio_plan',msg,nuevoPlan,compEl.files[0].name,b64cp);
   document.getElementById('portal-cambio-plan-ov').classList.remove('open');
   showToast('Solicitud enviada ✓');
 }
@@ -1351,7 +1352,37 @@ function registro_step3_next(){
 function registro_updatePlanes(){registro_renderPlanCards&&registro_renderPlanCards();}
 function registro_updateMonto(){}
 
+
+function readFileAsBase64(file){
+  return new Promise(function(resolve, reject){
+    if(!file){ resolve(null); return; }
+    const reader = new FileReader();
+    reader.onload = function(e){ resolve(e.target.result); };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function portal_crearSolicitudConComprobante(tipo, mensaje, data, comprobante, comprobanteData){
+  const s = portalStudent;
+  try{
+    if(!db) throw new Error('Sin conexión');
+    const doc = {
+      tipo, mensaje, data,
+      clienteId: s.id,
+      clienteNombre: s.nombre+' '+s.apellido,
+      sede: s.sede,
+      estado: 'pendiente',
+      createdAt: new Date().toISOString()
+    };
+    if(comprobante) doc.comprobante = comprobante;
+    if(comprobanteData) doc.comprobanteData = comprobanteData;
+    await db.collection('solicitudes').add(doc);
+  }catch(e){ showToast('Error: '+e.message,'⚠'); throw e; }
+}
+
 window.addEventListener('load', initPortal);
+
 
 
 
