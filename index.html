@@ -991,12 +991,22 @@ async function portal_enviarRenovacion(){
   if(!compEl.files.length){errEl.textContent='Subí el comprobante.';errEl.style.display='block';return;}
   btn.textContent='Enviando...';btn.disabled=true;
   try{
-    const s=portalStudent;
-    await portal_crearSolicitud('renovacion',
-      s.nombre+' '+s.apellido+' solicita renovar su plan ('+s.plan+'). Comprobante: '+compEl.files[0].name,s.plan);
+    const s = portalStudent;
+    const b64 = await readFileAsBase64(compEl.files[0]);
+    await portal_crearSolicitudConComprobante(
+      'renovacion',
+      s.nombre+' '+s.apellido+' solicita renovar su plan ('+s.plan+'). Comprobante: '+compEl.files[0].name,
+      s.plan,
+      compEl.files[0].name,
+      b64
+    );
     document.getElementById('portal-renovar-ov').classList.remove('open');
     showToast('Solicitud enviada. Te avisamos cuando verifiquemos el pago ✓');
-  }catch(e){errEl.textContent='Error: '+e.message;errEl.style.display='block';}
+  }catch(e){
+    errEl.textContent='Error: '+e.message;
+    errEl.style.display='block';
+    console.error('portal_enviarRenovacion error:',e);
+  }
   finally{btn.textContent='Enviar comprobante →';btn.disabled=false;}
 }
 
@@ -1204,7 +1214,23 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
-async function registro_pagarTransfer(){const compEl=document.getElementById('reg-comprobante'),err=document.getElementById('reg-err3');if(!compEl.files.length){err.textContent='Subi el comprobante.';err.style.display='block';return;}registroData.comprobante=compEl.files[0].name;await registro_completar('Transferencia',null,true);}
+async function registro_pagarTransfer(){
+  const compEl = document.getElementById('reg-comprobante');
+  const err    = document.getElementById('reg-err3');
+  if(!compEl.files.length){ err.textContent='Subí el comprobante.'; err.style.display='block'; return; }
+  const btn = document.getElementById('reg-btn-pagar');
+  if(btn){ btn.disabled=true; btn.textContent='Enviando...'; }
+  try{
+    registroData.comprobante = compEl.files[0].name;
+    registroData.comprobanteData = await readFileAsBase64(compEl.files[0]);
+    await registro_completar('Transferencia', null, true);
+  }catch(e){
+    err.textContent = 'Error: '+e.message;
+    err.style.display = 'block';
+    console.error('registro_pagarTransfer error:',e);
+    if(btn){ btn.disabled=false; btn.textContent='Enviar comprobante →'; }
+  }
+}
 async function registro_crearCuenta(){
   const btn=document.querySelector('#registro-step2 button.lb');if(btn){btn.textContent='Creando...';btn.disabled=true;}
   const err=document.getElementById('reg-err2');
@@ -1223,7 +1249,7 @@ async function registro_crearCuenta(){
     err.textContent='Error: '+e.message;err.style.display='block';
   }
 }
-async function registro_completar(metodo,txId,pendingTransfer){if(pendingTransfer===undefined)pendingTransfer=false;const p=PLANES[registroData.plan];const err=document.getElementById('reg-err3');try{let uc;try{uc=await auth.createUserWithEmailAndPassword(registroData.email,registroData.pass);}catch(e){if(e.code==='auth/email-already-in-use'){uc=await auth.signInWithEmailAndPassword(registroData.email,registroData.pass);}else if(e.code==='auth/configuration-not-found'){throw new Error('Firebase Auth no está habilitado. Activalo en Firebase Console → Authentication → Sign-in method.');}else throw e;}const ep=pendingTransfer?'Pendiente':'Al dia';const ns={nombre:registroData.nombre,apellido:registroData.apellido,dni:registroData.dni||'',telefono:registroData.telefono||'',email:registroData.email,sede:registroData.sede,plan:registroData.plan,monto:p?p.monto:registroData.monto,creditos:p?p.creditos:0,metodo,ep,inicio:new Date().toISOString().split('T')[0],horarios:'',lesiones:'',descuento:'',actividad:'',att:[0,0,0,0,0,0],txId:txId||'',comprobante:registroData.comprobante||''};const docRef=await db.collection('students').add(ns);if(pendingTransfer){await db.collection('solicitudes').add({tipo:'confirmar_pago',mensaje:registroData.nombre+' '+registroData.apellido+' pago por transferencia. Pendiente confirmacion.',data:registroData.plan,clienteId:docRef.id,clienteNombre:registroData.nombre+' '+registroData.apellido,sede:registroData.sede,estado:'pendiente',createdAt:new Date().toISOString()});}document.getElementById('registro-screen').style.display='none';document.getElementById('registro-ok-screen').style.display='flex';document.getElementById('reg-ok-msg').textContent=pendingTransfer?'Comprobante recibido. Te confirmamos el acceso en las proximas horas.':'Pago aprobado. Ya podes acceder a tu portal.';if(!pendingTransfer){setTimeout(async()=>{portalStudent={...ns,id:docRef.id};document.getElementById('registro-ok-screen').style.display='none';showPortal();},2000);}}catch(e){const btn=document.getElementById('reg-btn-pagar');if(btn){btn.disabled=false;btn.textContent='Reintentar';}err.textContent='Error: '+e.message;err.style.display='block';}}
+async function registro_completar(metodo,txId,pendingTransfer){if(pendingTransfer===undefined)pendingTransfer=false;const p=PLANES[registroData.plan];const err=document.getElementById('reg-err3');try{let uc;try{uc=await auth.createUserWithEmailAndPassword(registroData.email,registroData.pass);}catch(e){if(e.code==='auth/email-already-in-use'){uc=await auth.signInWithEmailAndPassword(registroData.email,registroData.pass);}else if(e.code==='auth/configuration-not-found'){throw new Error('Firebase Auth no está habilitado. Activalo en Firebase Console → Authentication → Sign-in method.');}else throw e;}const ep=pendingTransfer?'Pendiente':'Al dia';const ns={nombre:registroData.nombre,apellido:registroData.apellido,dni:registroData.dni||'',telefono:registroData.telefono||'',email:registroData.email,sede:registroData.sede,plan:registroData.plan,monto:p?p.monto:registroData.monto,creditos:p?p.creditos:0,metodo,ep,inicio:new Date().toISOString().split('T')[0],horarios:'',lesiones:'',descuento:'',actividad:'',att:[0,0,0,0,0,0],txId:txId||'',comprobante:registroData.comprobante||'',comprobanteData:registroData.comprobanteData||''};const docRef=await db.collection('students').add(ns);if(pendingTransfer){await db.collection('solicitudes').add({tipo:'confirmar_pago',mensaje:registroData.nombre+' '+registroData.apellido+' pago por transferencia. Pendiente confirmacion.',data:registroData.plan,clienteId:docRef.id,clienteNombre:registroData.nombre+' '+registroData.apellido,sede:registroData.sede,estado:'pendiente',createdAt:new Date().toISOString()});}document.getElementById('registro-screen').style.display='none';document.getElementById('registro-ok-screen').style.display='flex';document.getElementById('reg-ok-msg').textContent=pendingTransfer?'Comprobante recibido. Te confirmamos el acceso en las proximas horas.':'Pago aprobado. Ya podes acceder a tu portal.';if(!pendingTransfer){setTimeout(async()=>{portalStudent={...ns,id:docRef.id};document.getElementById('registro-ok-screen').style.display='none';showPortal();},2000);}}catch(e){const btn=document.getElementById('reg-btn-pagar');if(btn){btn.disabled=false;btn.textContent='Reintentar';}err.textContent='Error: '+e.message;err.style.display='block';}}
 function registro_irAlPortal(){
   document.getElementById('registro-ok-screen').style.display='none';
   if(portalStudent){showPortal();}else{showPortalLogin();}
@@ -1373,6 +1399,8 @@ async function portal_crearSolicitudConComprobante(tipo, mensaje, data, comproba
 }
 
 window.addEventListener('load', initPortal);
+
+
 
 
 
