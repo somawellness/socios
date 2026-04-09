@@ -1442,11 +1442,32 @@ function changeSede(v){
 function showView(v){
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
-  var vEl=document.getElementById('view-'+v); console.log('showView',v,'element:',vEl); if(vEl)vEl.classList.add('active');
+  document.getElementById('view-'+v).classList.add('active');
   const T={dashboard:'Dashboard',estudiantes:'Clientes',horarios:'Horarios',asistencia:'Asistencia',financiero:'Financiero',pagos:'Pagos',salud:'Salud',planes:'Planes y Tarifas',reportes:'Reportes',profesores:'Profesores'};
   document.getElementById('tb-title').textContent=T[v]||v;
   document.querySelectorAll('.nav-item').forEach(el=>{if(el.getAttribute('onclick')&&el.getAttribute('onclick').includes(`'${v}'`))el.classList.add('active');});
-  ({dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,asistencia:renderAttendance,financiero:renderFinanciero,pagos:renderPayments,salud:renderHealth,planes:renderPlanes,vencimientos:renderVencimientos,solicitudes:renderSolicitudes,profesores:renderProfesores}[v]||function(){})();
+  (function(){
+    if(v==='profesores'){
+      // Ensure view is in correct place and visible
+      var pv = document.getElementById('view-profesores');
+      if(!pv){
+        // Create it dynamically
+        pv = document.createElement('div');
+        pv.id = 'view-profesores';
+        pv.className = 'view';
+        document.querySelector('.content').appendChild(pv);
+      }
+      // Move to content div if not already there
+      var contentDiv = document.querySelector('.content');
+      if(contentDiv && pv.parentElement !== contentDiv){
+        contentDiv.appendChild(pv);
+      }
+      pv.classList.add('active');
+      renderProfesores();
+      return;
+    }
+    ({dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,asistencia:renderAttendance,financiero:renderFinanciero,pagos:renderPayments,salud:renderHealth,planes:renderPlanes,vencimientos:renderVencimientos,solicitudes:renderSolicitudes,profesores:renderProfesores}[v]||function(){})();
+  })();
   if(typeof updateMobileNav==='function')updateMobileNav();
   checkSolicitudes();
   updateMobileNav();
@@ -3738,6 +3759,7 @@ async function delHoras(hid, pid, pnom){
     renderProfesores();
   } catch(e){ showToast('Error: '+e.message,'&#9888;'); }
 }
+
 
 
 
