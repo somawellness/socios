@@ -809,6 +809,65 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
   <div style="background:var(--warm);border-radius:12px;padding:4px 0;" id="venc-content"></div>
 </div>
 
+<div id="view-profesores" class="view">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+    <div><h2 style="font-family:var(--serif);font-size:22px;font-weight:400;margin:0;">Registro de Horas</h2>
+    <p style="color:var(--muted);font-size:13px;margin:4px 0 0;">Control de horas trabajadas y sueldos por profesor</p></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <select id="prof-mes-sel" onchange="renderProfesores()" style="padding:8px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--warm);font-size:13px;color:var(--char);cursor:pointer;"></select>
+      <button class="btn btn-p btn-sm" onclick="openAddProfesor()">+ Profesor</button>
+      <button class="btn btn-p btn-sm" onclick="openRegistroHoras()">+ Registrar horas</button>
+    </div>
+  </div>
+  <div id="prof-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;"></div>
+  <div style="background:var(--warm);border-radius:16px;border:1px solid var(--border);overflow:hidden;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 80px 100px 110px 130px;padding:10px 20px;background:rgba(74,103,65,.06);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;letter-spacing:1px;color:var(--muted);text-transform:uppercase;">
+      <div>Profesor</div><div>Sede</div><div>Horas</div><div>Valor/h</div><div>Total</div><div style="text-align:right;">Acciones</div>
+    </div>
+    <div id="prof-content"><div style="text-align:center;padding:40px;color:var(--muted);">Cargando...</div></div>
+  </div>
+</div>
+<div class="ov" id="prof-add-ov" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:440px;">
+    <div class="mhd"><div><div class="mt">Nuevo Profesor</div><div class="ms">Agregar al registro</div></div>
+    <button class="ibt cl" onclick="document.getElementById('prof-add-ov').classList.remove('open')">&#x2715;</button></div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="fgrp"><label>Nombre completo *</label><input id="prof-nombre" placeholder="Ej: Daina Cejas" class="finput"></div>
+      <div class="fgrp"><label>Sede *</label><select id="prof-sede" class="finput"><option value="Amarras">Amarras</option><option value="Centro">Centro</option><option value="Faro">Faro</option><option value="Todas">Todas las sedes</option></select></div>
+      <div class="fgrp"><label>Valor por hora ($)</label><input id="prof-valor-hora" type="number" placeholder="9500" class="finput"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-o btn-sm" onclick="document.getElementById('prof-add-ov').classList.remove('open')">Cancelar</button>
+        <button class="btn btn-p btn-sm" onclick="saveProfesor()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="ov" id="prof-horas-ov" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:480px;">
+    <div class="mhd"><div><div class="mt">Registrar Horas</div><div class="ms">Cargar horas por dia</div></div>
+    <button class="ibt cl" onclick="document.getElementById('prof-horas-ov').classList.remove('open')">&#x2715;</button></div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="fgrp"><label>Profesor *</label><select id="horas-prof-sel" class="finput"><option value="">- Seleccionar -</option></select></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="fgrp"><label>Fecha *</label><input id="horas-fecha" type="date" class="finput"></div>
+        <div class="fgrp"><label>Horas *</label><input id="horas-cantidad" type="number" min="0.5" max="24" step="0.5" placeholder="4" class="finput"></div>
+      </div>
+      <div class="fgrp"><label>Notas</label><input id="horas-notas" placeholder="Ej: Clase extra, evento..." class="finput"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-o btn-sm" onclick="document.getElementById('prof-horas-ov').classList.remove('open')">Cancelar</button>
+        <button class="btn btn-p btn-sm" onclick="saveHoras()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="ov" id="prof-detail-ov" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:600px;">
+    <div class="mhd"><div><div class="mt" id="prof-detail-title">Profesor</div><div class="ms" id="prof-detail-sub"></div></div>
+    <button class="ibt cl" onclick="document.getElementById('prof-detail-ov').classList.remove('open')">&#x2715;</button></div>
+    <div id="prof-detail-content" style="max-height:60vh;overflow-y:auto;"></div>
+  </div>
+</div>
+
 <div class="view" id="view-solicitudes">
   <div class="vhd">
     <div>
@@ -821,6 +880,8 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
     <div style="text-align:center;padding:40px;color:#8a8070;">Cargando...</div>
   </div>
 </div>
+
+
 
 </div>
 </div>
@@ -994,64 +1055,7 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
 
 
 
-<div id="view-profesores" class="view">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-    <div><h2 style="font-family:var(--serif);font-size:22px;font-weight:400;margin:0;">Registro de Horas</h2>
-    <p style="color:var(--muted);font-size:13px;margin:4px 0 0;">Control de horas trabajadas y sueldos por profesor</p></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-      <select id="prof-mes-sel" onchange="renderProfesores()" style="padding:8px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--warm);font-size:13px;color:var(--char);cursor:pointer;"></select>
-      <button class="btn btn-p btn-sm" onclick="openAddProfesor()">+ Profesor</button>
-      <button class="btn btn-p btn-sm" onclick="openRegistroHoras()">+ Registrar horas</button>
-    </div>
-  </div>
-  <div id="prof-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;"></div>
-  <div style="background:var(--warm);border-radius:16px;border:1px solid var(--border);overflow:hidden;">
-    <div style="display:grid;grid-template-columns:1fr 1fr 80px 100px 110px 130px;padding:10px 20px;background:rgba(74,103,65,.06);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;letter-spacing:1px;color:var(--muted);text-transform:uppercase;">
-      <div>Profesor</div><div>Sede</div><div>Horas</div><div>Valor/h</div><div>Total</div><div style="text-align:right;">Acciones</div>
-    </div>
-    <div id="prof-content"><div style="text-align:center;padding:40px;color:var(--muted);">Cargando...</div></div>
-  </div>
-</div>
-<div class="ov" id="prof-add-ov" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="max-width:440px;">
-    <div class="mhd"><div><div class="mt">Nuevo Profesor</div><div class="ms">Agregar al registro</div></div>
-    <button class="ibt cl" onclick="document.getElementById('prof-add-ov').classList.remove('open')">&#x2715;</button></div>
-    <div style="display:flex;flex-direction:column;gap:14px;">
-      <div class="fgrp"><label>Nombre completo *</label><input id="prof-nombre" placeholder="Ej: Daina Cejas" class="finput"></div>
-      <div class="fgrp"><label>Sede *</label><select id="prof-sede" class="finput"><option value="Amarras">Amarras</option><option value="Centro">Centro</option><option value="Faro">Faro</option><option value="Todas">Todas las sedes</option></select></div>
-      <div class="fgrp"><label>Valor por hora ($)</label><input id="prof-valor-hora" type="number" placeholder="9500" class="finput"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button class="btn btn-o btn-sm" onclick="document.getElementById('prof-add-ov').classList.remove('open')">Cancelar</button>
-        <button class="btn btn-p btn-sm" onclick="saveProfesor()">Guardar</button>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="ov" id="prof-horas-ov" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="max-width:480px;">
-    <div class="mhd"><div><div class="mt">Registrar Horas</div><div class="ms">Cargar horas por dia</div></div>
-    <button class="ibt cl" onclick="document.getElementById('prof-horas-ov').classList.remove('open')">&#x2715;</button></div>
-    <div style="display:flex;flex-direction:column;gap:14px;">
-      <div class="fgrp"><label>Profesor *</label><select id="horas-prof-sel" class="finput"><option value="">- Seleccionar -</option></select></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div class="fgrp"><label>Fecha *</label><input id="horas-fecha" type="date" class="finput"></div>
-        <div class="fgrp"><label>Horas *</label><input id="horas-cantidad" type="number" min="0.5" max="24" step="0.5" placeholder="4" class="finput"></div>
-      </div>
-      <div class="fgrp"><label>Notas</label><input id="horas-notas" placeholder="Ej: Clase extra, evento..." class="finput"></div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button class="btn btn-o btn-sm" onclick="document.getElementById('prof-horas-ov').classList.remove('open')">Cancelar</button>
-        <button class="btn btn-p btn-sm" onclick="saveHoras()">Guardar</button>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="ov" id="prof-detail-ov" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="max-width:600px;">
-    <div class="mhd"><div><div class="mt" id="prof-detail-title">Profesor</div><div class="ms" id="prof-detail-sub"></div></div>
-    <button class="ibt cl" onclick="document.getElementById('prof-detail-ov').classList.remove('open')">&#x2715;</button></div>
-    <div id="prof-detail-content" style="max-height:60vh;overflow-y:auto;"></div>
-  </div>
-</div>
+
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD5E3_yor_lR7N41WjR1CtOzS3WjkQGE_4",
@@ -1438,7 +1442,7 @@ function changeSede(v){
 function showView(v){
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
-  document.getElementById('view-'+v).classList.add('active');
+  var vEl=document.getElementById('view-'+v); console.log('showView',v,'element:',vEl); if(vEl)vEl.classList.add('active');
   const T={dashboard:'Dashboard',estudiantes:'Clientes',horarios:'Horarios',asistencia:'Asistencia',financiero:'Financiero',pagos:'Pagos',salud:'Salud',planes:'Planes y Tarifas',reportes:'Reportes',profesores:'Profesores'};
   document.getElementById('tb-title').textContent=T[v]||v;
   document.querySelectorAll('.nav-item').forEach(el=>{if(el.getAttribute('onclick')&&el.getAttribute('onclick').includes(`'${v}'`))el.classList.add('active');});
@@ -3734,6 +3738,9 @@ async function delHoras(hid, pid, pnom){
     renderProfesores();
   } catch(e){ showToast('Error: '+e.message,'&#9888;'); }
 }
+
+
+
 
 
 
